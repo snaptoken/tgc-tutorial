@@ -1,0 +1,16 @@
+---
+:name: tgc
+:version: "1.0.0beta0"
+:title: Build Your Own Garbage Collector
+:sync: repo
+:rouge_theme: github
+:bold_weight: 500
+:repo_author:
+  :name: snaptoken
+  :email: snaptoken@viewsourcecode.org
+:tags:
+  :c0: "♏&#xFE0E; doesn’t compile"
+  :c1: "♎&#xFE0E; compiles, but with no observable effects"
+  :c2: "♐&#xFE0E; compiles"
+  :c-unknown: "♋&#xFE0E; may or may not compile"
+...
