@@ -6,11 +6,11 @@ sweep only unmarked
 sweepfactor/mitems
 ---MVP---
 pause/unpause
+minptr/maxptr optimization
 basic hash table (loop all the way around)
 hash table resizing
 smarter hash table resizing (loadfactor, primes)
 probe optimization (loop until j > probe)
-minptr/maxptr optimization
 hash insert swapping optimization
 hash remove moving displaced things up optimization
 TGC_ROOT

@@ -18,8 +18,10 @@ diff --git a/tgc.c b/tgc.c
 new file mode 100644
 --- /dev/null
 +++ b/tgc.c
-@@ -0,0 +1,6 @@
+@@ -0,0 +1,8 @@
 +#include "tgc.h"
++
++/*** public api ***/
 +
 +void *tgc_alloc(size_t size) {
 +  void *ptr = malloc(size);
@@ -60,6 +62,22 @@ diff --git a/tgc.h b/tgc.h
  #endif
 
 ~~~ step: start-prototype
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -2,6 +2,12 @@
+ 
+ /*** public api ***/
+ 
++void tgc_start(tgc_t *gc) {
++  gc->nitems = 0;
++  gc->nslots = 0;
++  gc->items = NULL;
++}
++
+ void *tgc_alloc(size_t size) {
+   void *ptr = malloc(size);
+   return ptr;
 diff --git a/tgc.h b/tgc.h
 --- a/tgc.h
 +++ b/tgc.h
@@ -73,42 +91,68 @@ diff --git a/tgc.h b/tgc.h
  
  #endif
 
-~~~ step: start
+~~~ step: pass-gc-to-alloc
+diff --git a/tgc.h b/tgc.h
+--- a/tgc.h
++++ b/tgc.h
+@@ -14,6 +14,6 @@ typedef struct {
+ 
+ void tgc_start(tgc_t *gc);
+ 
+-void *tgc_alloc(size_t size);
++void *tgc_alloc(tgc_t *gc, size_t size);
+ 
+ #endif
+
+~~~ step: pass-gc-to-alloc-impl
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
-@@ -1,5 +1,11 @@
- #include "tgc.h"
+@@ -8,7 +8,7 @@ void tgc_start(tgc_t *gc) {
+   gc->items = NULL;
+ }
  
-+void tgc_start(tgc_t *gc) {
-+  gc->nitems = 0;
-+  gc->nslots = 0;
-+  gc->items = NULL;
-+}
-+
- void *tgc_alloc(size_t size) {
+-void *tgc_alloc(size_t size) {
++void *tgc_alloc(tgc_t *gc, size_t size) {
    void *ptr = malloc(size);
    return ptr;
+ }
 
 ~~~ step: call-add
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
-@@ -8,5 +8,8 @@ void tgc_start(tgc_t *gc) {
+@@ -1,5 +1,29 @@
+ #include "tgc.h"
  
- void *tgc_alloc(size_t size) {
-   void *ptr = malloc(size);
-+  if (ptr != NULL) {
-+    ptr = tgc_add(gc, ptr);
++/*** pointer table ***/
++
++static int tgc_resize(tgc_t *gc) {
++  tgc_ptr_t *old_items = gc->items;
++  size_t old_size = gc->nslots;
++
++  if (gc->nslots >= gc->nitems) return 1;
++
++  gc->nslots = gc->nitems * 2;
++  gc->items = calloc(gc->nslots, sizeof(tgc_ptr_t));
++
++  if (gc->items == NULL) {
++    gc->nslots = old_size;
++    gc->items = old_items;
++    return 0;
 +  }
-   return ptr;
- }
-
-~~~ step: add
-diff --git a/tgc.c b/tgc.c
---- a/tgc.c
-+++ b/tgc.c
-@@ -6,6 +6,19 @@ void tgc_start(tgc_t *gc) {
++
++  memcpy(gc->items, old_items, old_size * sizeof(tgc_ptr_t));
++
++  free(old_items);
++
++  return 1;
++}
++
+ /*** public api ***/
+ 
+ void tgc_start(tgc_t *gc) {
+@@ -8,7 +32,23 @@ void tgc_start(tgc_t *gc) {
    gc->items = NULL;
  }
  
@@ -125,62 +169,21 @@ diff --git a/tgc.c b/tgc.c
 +  }
 +}
 +
- void *tgc_alloc(size_t size) {
+ void *tgc_alloc(tgc_t *gc, size_t size) {
    void *ptr = malloc(size);
-   if (ptr != NULL) {
-
-~~~ step: resize
-diff --git a/tgc.c b/tgc.c
---- a/tgc.c
-+++ b/tgc.c
-@@ -1,5 +1,27 @@
- #include "tgc.h"
- 
-+static int tgc_resize(tgc_t *gc) {
-+  tgc_ptr_t *old_items = gc->items;
-+  size_t old_size = gc->nslots;
-+
-+  if (gc->nslots >= gc->nitems) return;
-+
-+  gc->nslots = gc->nitems * 2;
-+  gc->items = calloc(gc->nslots, sizeof(tgc_ptr_t));
-+
-+  if (gc->items = NULL) {
-+    gc->nslots = old_size;
-+    gc->items = old_items;
-+    return 0;
++  if (ptr != NULL) {
++    ptr = tgc_add(gc, ptr);
 +  }
-+
-+  memcpy(gc->items, old_items, old_size * sizeof(tgc_ptr_t));
-+
-+  free(old_items);
-+
-+  return 1;
-+}
-+
- void tgc_start(tgc_t *gc) {
-   gc->nitems = 0;
-   gc->nslots = 0;
+   return ptr;
+ }
 
 ~~~ step: include-string
-diff --git a/tgc.h b/tgc.h
---- a/tgc.h
-+++ b/tgc.h
-@@ -2,6 +2,7 @@
- #define TGC_H
- 
- #include <stdlib.h>
-+#include <string.h>
- 
- typedef struct {
-   void *ptr;
-
-~~~ step: add-ptr
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
-@@ -1,5 +1,19 @@
- #include "tgc.h"
+@@ -2,6 +2,20 @@
+ 
+ /*** pointer table ***/
  
 +static void tgc_add_ptr(tgc_t *gc, void *ptr) {
 +  tgc_ptr_t item;
@@ -199,6 +202,17 @@ diff --git a/tgc.c b/tgc.c
  static int tgc_resize(tgc_t *gc) {
    tgc_ptr_t *old_items = gc->items;
    size_t old_size = gc->nslots;
+diff --git a/tgc.h b/tgc.h
+--- a/tgc.h
++++ b/tgc.h
+@@ -2,6 +2,7 @@
+ #define TGC_H
+ 
+ #include <stdlib.h>
++#include <string.h>
+ 
+ typedef struct {
+   void *ptr;
 
 ~~~ step: run-prototype
 diff --git a/tgc.h b/tgc.h
@@ -210,33 +224,19 @@ diff --git a/tgc.h b/tgc.h
  void tgc_start(tgc_t *gc);
 +void tgc_run(tgc_t *gc);
  
- void *tgc_alloc(size_t size);
+ void *tgc_alloc(tgc_t *gc, size_t size);
  
 
 ~~~ step: call-sweep
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
-@@ -42,6 +42,10 @@ void tgc_start(tgc_t *gc) {
-   gc->items = NULL;
- }
- 
-+void tgc_run(tgc_t *gc) {
-+  tgc_sweep(gc);
-+}
-+
- static void *tgc_add(tgc_t *gc, void *ptr) {
-   gc->nitems++;
- 
-
-~~~ step: sweep
-diff --git a/tgc.c b/tgc.c
---- a/tgc.c
-+++ b/tgc.c
-@@ -36,6 +36,17 @@ static int tgc_resize(tgc_t *gc) {
+@@ -38,6 +38,19 @@ static int tgc_resize(tgc_t *gc) {
    return 1;
  }
  
++/*** mark and sweep ***/
++
 +void tgc_sweep(tgc_t *gc) {
 +  size_t i;
 +
@@ -248,9 +248,20 @@ diff --git a/tgc.c b/tgc.c
 +  }
 +}
 +
+ /*** public api ***/
+ 
  void tgc_start(tgc_t *gc) {
-   gc->nitems = 0;
-   gc->nslots = 0;
+@@ -46,6 +59,10 @@ void tgc_start(tgc_t *gc) {
+   gc->items = NULL;
+ }
+ 
++void tgc_run(tgc_t *gc) {
++  tgc_sweep(gc);
++}
++
+ static void *tgc_add(tgc_t *gc, void *ptr) {
+   gc->nitems++;
+ 
 
 ~~~ step: stop-prototype
 diff --git a/tgc.h b/tgc.h
@@ -263,13 +274,13 @@ diff --git a/tgc.h b/tgc.h
 +void tgc_stop(tgc_t *gc);
  void tgc_run(tgc_t *gc);
  
- void *tgc_alloc(size_t size);
+ void *tgc_alloc(tgc_t *gc, size_t size);
 
 ~~~ step: stop
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
-@@ -53,6 +53,11 @@ void tgc_start(tgc_t *gc) {
+@@ -59,6 +59,11 @@ void tgc_start(tgc_t *gc) {
    gc->items = NULL;
  }
  
@@ -283,23 +294,10 @@ diff --git a/tgc.c b/tgc.c
  }
 
 ~~~ step: add-mark
-diff --git a/tgc.h b/tgc.h
---- a/tgc.h
-+++ b/tgc.h
-@@ -6,6 +6,7 @@
- 
- typedef struct {
-   void *ptr;
-+  int mark;
- } tgc_ptr_t;
- 
- typedef struct {
-
-~~~ step: mark-ptr
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
-@@ -5,6 +5,7 @@ static void tgc_add_ptr(tgc_t *gc, void *ptr) {
+@@ -7,6 +7,7 @@ static void tgc_add_ptr(tgc_t *gc, void *ptr) {
    size_t i;
  
    item.ptr = ptr;
@@ -307,9 +305,9 @@ diff --git a/tgc.c b/tgc.c
  
    for (i = 0; i < gc->nslots; i++) {
      if (gc->items[i].ptr == NULL) {
-@@ -36,6 +37,17 @@ static int tgc_resize(tgc_t *gc) {
-   return 1;
- }
+@@ -40,6 +41,17 @@ static int tgc_resize(tgc_t *gc) {
+ 
+ /*** mark and sweep ***/
  
 +static void tgc_mark_ptr(tgc_t *gc, void *ptr) {
 +  size_t i;
@@ -325,8 +323,32 @@ diff --git a/tgc.c b/tgc.c
  void tgc_sweep(tgc_t *gc) {
    size_t i;
  
+diff --git a/tgc.h b/tgc.h
+--- a/tgc.h
++++ b/tgc.h
+@@ -6,6 +6,7 @@
+ 
+ typedef struct {
+   void *ptr;
++  int mark;
+ } tgc_ptr_t;
+ 
+ typedef struct {
 
 ~~~ step: stk-bottom
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -65,7 +65,8 @@ void tgc_sweep(tgc_t *gc) {
+ 
+ /*** public api ***/
+ 
+-void tgc_start(tgc_t *gc) {
++void tgc_start(tgc_t *gc, void *stk) {
++  gc->bottom = stk;
+   gc->nitems = 0;
+   gc->nslots = 0;
+   gc->items = NULL;
 diff --git a/tgc.h b/tgc.h
 --- a/tgc.h
 +++ b/tgc.h
@@ -345,26 +367,11 @@ diff --git a/tgc.h b/tgc.h
  void tgc_run(tgc_t *gc);
  
 
-~~~ step: set-bottom
-diff --git a/tgc.c b/tgc.c
---- a/tgc.c
-+++ b/tgc.c
-@@ -59,7 +59,8 @@ void tgc_sweep(tgc_t *gc) {
-   }
- }
- 
--void tgc_start(tgc_t *gc) {
-+void tgc_start(tgc_t *gc, void *stk) {
-+  gc->bottom = stk;
-   gc->nitems = 0;
-   gc->nslots = 0;
-   gc->items = NULL;
-
 ~~~ step: mark-stack
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
-@@ -48,6 +48,15 @@ static void tgc_mark_ptr(tgc_t *gc, void *ptr) {
+@@ -52,6 +52,15 @@ static void tgc_mark_ptr(tgc_t *gc, void *ptr) {
    }
  }
  
@@ -385,7 +392,7 @@ diff --git a/tgc.c b/tgc.c
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
-@@ -52,8 +52,18 @@ static void tgc_mark_stack(tgc_t *gc) {
+@@ -56,8 +56,18 @@ static void tgc_mark_stack(tgc_t *gc) {
    void *stk, *bot, *top, *p;
    bot = gc->bottom; top = &stk;
  
@@ -411,14 +418,14 @@ diff --git a/tgc.c b/tgc.c
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
-@@ -67,6 +67,12 @@ static void tgc_mark_stack(tgc_t *gc) {
+@@ -71,6 +71,12 @@ static void tgc_mark_stack(tgc_t *gc) {
    }
  }
  
 +static void tgc_mark(tgc_t *gc) {
 +  if (gc->nitems == 0) { return; }
 +
-+  mark_stack(gc);
++  tgc_mark_stack(gc);
 +}
 +
  void tgc_sweep(tgc_t *gc) {
@@ -429,7 +436,7 @@ diff --git a/tgc.c b/tgc.c
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
-@@ -97,6 +97,7 @@ void tgc_stop(tgc_t *gc) {
+@@ -103,6 +103,7 @@ void tgc_stop(tgc_t *gc) {
  }
  
  void tgc_run(tgc_t *gc) {
@@ -442,7 +449,7 @@ diff --git a/tgc.c b/tgc.c
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
-@@ -78,6 +78,7 @@ void tgc_sweep(tgc_t *gc) {
+@@ -82,6 +82,7 @@ void tgc_sweep(tgc_t *gc) {
  
    for (i = 0; i < gc->nslots; i++) {
      if (gc->items[i].ptr == NULL) { continue; }
@@ -455,7 +462,7 @@ diff --git a/tgc.c b/tgc.c
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
-@@ -83,6 +83,11 @@ void tgc_sweep(tgc_t *gc) {
+@@ -87,6 +87,11 @@ void tgc_sweep(tgc_t *gc) {
      gc->items[i].ptr = NULL;
      gc->nitems--;
    }
@@ -466,13 +473,13 @@ diff --git a/tgc.c b/tgc.c
 +  }
  }
  
- void tgc_start(tgc_t *gc, void *stk) {
+ /*** public api ***/
 
 ~~~ step: collect-on-alloc
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
-@@ -112,6 +112,7 @@ static void *tgc_add(tgc_t *gc, void *ptr) {
+@@ -118,6 +118,7 @@ static void *tgc_add(tgc_t *gc, void *ptr) {
  
    if (tgc_resize(gc)) {
      tgc_add_ptr(gc, ptr);
@@ -482,24 +489,12 @@ diff --git a/tgc.c b/tgc.c
      gc->nitems--;
 
 ~~~ step: ptr-size
-diff --git a/tgc.h b/tgc.h
---- a/tgc.h
-+++ b/tgc.h
-@@ -7,6 +7,7 @@
- typedef struct {
-   void *ptr;
-   int mark;
-+  size_t size;
- } tgc_ptr_t;
- 
- typedef struct {
-
-~~~ step: set-size
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
-@@ -1,11 +1,12 @@
- #include "tgc.h"
+@@ -2,12 +2,13 @@
+ 
+ /*** pointer table ***/
  
 -static void tgc_add_ptr(tgc_t *gc, void *ptr) {
 +static void tgc_add_ptr(tgc_t *gc, void *ptr, size_t size) {
@@ -512,12 +507,23 @@ diff --git a/tgc.c b/tgc.c
  
    for (i = 0; i < gc->nslots; i++) {
      if (gc->items[i].ptr == NULL) {
+diff --git a/tgc.h b/tgc.h
+--- a/tgc.h
++++ b/tgc.h
+@@ -7,6 +7,7 @@
+ typedef struct {
+   void *ptr;
+   int mark;
++  size_t size;
+ } tgc_ptr_t;
+ 
+ typedef struct {
 
 ~~~ step: pass-size-to-add-ptr
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
-@@ -108,11 +108,11 @@ void tgc_run(tgc_t *gc) {
+@@ -114,11 +114,11 @@ void tgc_run(tgc_t *gc) {
    tgc_sweep(gc);
  }
  
@@ -536,8 +542,8 @@ diff --git a/tgc.c b/tgc.c
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
-@@ -125,7 +125,7 @@ static void *tgc_add(tgc_t *gc, void *ptr, size_t size) {
- void *tgc_alloc(size_t size) {
+@@ -131,7 +131,7 @@ static void *tgc_add(tgc_t *gc, void *ptr, size_t size) {
+ void *tgc_alloc(tgc_t *gc, size_t size) {
    void *ptr = malloc(size);
    if (ptr != NULL) {
 -    ptr = tgc_add(gc, ptr);
@@ -545,3 +551,180 @@ diff --git a/tgc.c b/tgc.c
    }
    return ptr;
  }
+
+~~~ step: mark-recursively
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -43,11 +43,14 @@ static int tgc_resize(tgc_t *gc) {
+ /*** mark and sweep ***/
+ 
+ static void tgc_mark_ptr(tgc_t *gc, void *ptr) {
+-  size_t i;
++  size_t i, k;
+ 
+   for (i = 0; i < gc->nslots; i++) {
+     if (ptr == gc->items[i].ptr) {
+       gc->items[i].mark = 1;
++      for (k = 0; k < gc->items[i].size/sizeof(void*); k++) {
++        tgc_mark_ptr(gc, ((void**)gc->items[i].ptr)[k]);
++      }
+       return;
+     }
+   }
+
+~~~ step: avoid-infinite-recursion
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -47,6 +47,7 @@ static void tgc_mark_ptr(tgc_t *gc, void *ptr) {
+ 
+   for (i = 0; i < gc->nslots; i++) {
+     if (ptr == gc->items[i].ptr) {
++      if (gc->items[i].mark) { return; }
+       gc->items[i].mark = 1;
+       for (k = 0; k < gc->items[i].size/sizeof(void*); k++) {
+         tgc_mark_ptr(gc, ((void**)gc->items[i].ptr)[k]);
+@@ -76,8 +77,12 @@ static void tgc_mark_stack(tgc_t *gc) {
+ }
+ 
+ static void tgc_mark(tgc_t *gc) {
++  jmp_buf env;
++
+   if (gc->nitems == 0) { return; }
+ 
++  memset(&env, 0, sizeof(jmp_buf));
++  setjmp(env);
+   tgc_mark_stack(gc);
+ }
+ 
+
+~~~ step: include-setjmp
+diff --git a/tgc.h b/tgc.h
+--- a/tgc.h
++++ b/tgc.h
+@@ -3,6 +3,7 @@
+ 
+ #include <stdlib.h>
+ #include <string.h>
++#include <setjmp.h>
+ 
+ typedef struct {
+   void *ptr;
+
+~~~ step: volatile-mark-stack
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -78,12 +78,13 @@ static void tgc_mark_stack(tgc_t *gc) {
+ 
+ static void tgc_mark(tgc_t *gc) {
+   jmp_buf env;
++  void (*volatile mark_stack)(tgc_t*) = tgc_mark_stack;
+ 
+   if (gc->nitems == 0) { return; }
+ 
+   memset(&env, 0, sizeof(jmp_buf));
+   setjmp(env);
+-  tgc_mark_stack(gc);
++  mark_stack(gc);
+ }
+ 
+ void tgc_sweep(tgc_t *gc) {
+
+~~~ step: mitems
+diff --git a/tgc.h b/tgc.h
+--- a/tgc.h
++++ b/tgc.h
+@@ -14,7 +14,7 @@ typedef struct {
+ typedef struct {
+   void *bottom;
+   tgc_ptr_t *items;
+-  size_t nitems, nslots;
++  size_t nitems, nslots, mitems;
+ } tgc_t;
+ 
+ void tgc_start(tgc_t *gc, void *stk);
+
+~~~ step: init-mitems
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -110,6 +110,7 @@ void tgc_start(tgc_t *gc, void *stk) {
+   gc->bottom = stk;
+   gc->nitems = 0;
+   gc->nslots = 0;
++  gc->mitems = 0;
+   gc->items = NULL;
+ }
+ 
+
+~~~ step: set-mitems
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -102,6 +102,8 @@ void tgc_sweep(tgc_t *gc) {
+     if (gc->items[i].ptr == NULL) { continue; }
+     gc->items[i].mark = 0;
+   }
++
++  gc->mitems = gc->nitems + gc->nitems / 2 + 1;
+ }
+ 
+ /*** public api ***/
+
+~~~ step: use-mitems
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -131,7 +131,9 @@ static void *tgc_add(tgc_t *gc, void *ptr, size_t size) {
+ 
+   if (tgc_resize(gc)) {
+     tgc_add_ptr(gc, ptr, size);
+-    tgc_run(gc);
++    if (gc->nitems > gc->mitems) {
++      tgc_run(gc);
++    }
+     return ptr;
+   } else {
+     gc->nitems--;
+
+~~~ step: sweepfactor
+diff --git a/tgc.h b/tgc.h
+--- a/tgc.h
++++ b/tgc.h
+@@ -14,6 +14,7 @@ typedef struct {
+ typedef struct {
+   void *bottom;
+   tgc_ptr_t *items;
++  double sweepfactor;
+   size_t nitems, nslots, mitems;
+ } tgc_t;
+ 
+
+~~~ step: set-sweepfactor
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -114,6 +114,7 @@ void tgc_start(tgc_t *gc, void *stk) {
+   gc->nslots = 0;
+   gc->mitems = 0;
+   gc->items = NULL;
++  gc->sweepfactor = 0.5;
+ }
+ 
+ void tgc_stop(tgc_t *gc) {
+
+~~~ step: use-sweepfactor
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -103,7 +103,7 @@ void tgc_sweep(tgc_t *gc) {
+     gc->items[i].mark = 0;
+   }
+ 
+-  gc->mitems = gc->nitems + gc->nitems / 2 + 1;
++  gc->mitems = gc->nitems + (size_t)(gc->nitems * gc->sweepfactor) + 1;
+ }
+ 
+ /*** public api ***/
