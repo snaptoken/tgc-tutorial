@@ -1,13 +1,16 @@
-# Build Your Own Garbage Collector
+# Build Your Own Garbage Collector (not the real title)
 
-The tutorial is available here: http://viewsourcecode.org/snaptoken/tgc
+This tutorial isn't done yet. [Sign up here](http://eepurl.com/cIOGCD) to be
+notified when it's done.
+
+The tutorial will be available here: https://viewsourcecode.org/snaptoken/tgc
 
 It is a static HTML site, and you can download your own local copy from here:
 https://github.com/snaptoken/tgc-tutorial/releases
 
 See the
-[appendices](http://viewsourcecode.org/snaptoken/tgc/08.appendices.html) for
-more information about the tutorial itself, including how to contribute.
+[appendices](https://viewsourcecode.org/snaptoken/kilo/08.appendices.html) for
+more information about these tutorials, including how to contribute.
 
 ## License
 
