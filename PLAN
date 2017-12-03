@@ -12,9 +12,9 @@
 [x] smarter hash table resizing (loadfactor, primes)
 [x] cache hashes
 [x] robin hood hashing
-[ ] TGC_ROOT
-[ ] TGC_LEAF
-[ ] destructors
-[ ] tgc_calloc()
-[ ] tgc_realloc()
+[x] TGC_ROOT
+[x] TGC_LEAF
+[x] destructors
+[x] tgc_calloc()
+[x] tgc_realloc()
 [ ] tgc_free()
