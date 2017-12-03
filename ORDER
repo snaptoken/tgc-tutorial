@@ -1,0 +1,64 @@
+# SWEEP
+tgc_alloc()
+structs
+tgc_start()
+tgc_add()
+tgc_resize()
+tgc_add_ptr()
+tgc_sweep()
+tgc_stop()
+
+# MARK
+mark field
+tgc_mark_ptr()
+bottom field
+tgc_mark_stack()
+handle stacks that grow in either direction
+tgc_mark()
+stop tgc_mark_stack() from being inlined
+mark heap
+mark registers
+minptr/maxptr optimization
+
+# MARK & SWEEP & UNMARK
+only sweep unmarked
+reset all marks to 0
+tgc_run()
+run gc on alloc
+sweepfactor
+pause/resume gc
+
+# HASH TABLE
+tgc_hash()
+use tgc_hash() as starting index
+readd all pointers in tgc_resize()
+tgc_ideal_size() with loadfactor
+rename tgc_resize() to tgc_rehash()
+primes
+call tgc_resize_less() on sweep
+keep linear probing invariant during sweep (move out-of-place items back to free spaces)
+stop search when hitting an empty slot
+cache hashes
+use (hash == 0) instead of (ptr == NULL)
+tgc_probe()
+robin hood hashing
+
+# EXTRA FEATURES
+change mark to flags
+TGC_ROOT flag
+mark roots
+don't sweep roots
+tgc_alloc_opt()
+tgc_get_flags() and tgc_set_flags()
+tgc_get_ptr()
+tgc_get_size()
+TGC_LEAF flag
+don't recursively mark leaves
+destructors
+tgc_calloc()
+tgc_realloc() common cases
+tgc_rem()
+tgc_rem_ptr()
+tgc_realloc() NULL cases
+tgc_free()
+remove from freelist on tgc_free()
