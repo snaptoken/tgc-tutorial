@@ -1,21 +1,20 @@
-tgc_alloc() just delegating to malloc()
-sweep everything with tgc_run() (tgc_sweep())
-tgc_mark_ptr()
-marking the stack
-sweep only unmarked
-sweepfactor/mitems
+[x] tgc_alloc() just delegating to malloc()
+[x] sweep everything with tgc_run() (tgc_sweep())
+[x] tgc_mark_ptr()
+[x] marking the stack
+[x] sweep only unmarked
+[x] sweepfactor/mitems
 ---MVP---
-pause/unpause
-minptr/maxptr optimization
-basic hash table (loop all the way around)
-hash table resizing
-smarter hash table resizing (loadfactor, primes)
-probe optimization (loop until j > probe)
-hash insert swapping optimization
-hash remove moving displaced things up optimization
-TGC_ROOT
-TGC_LEAF
-destructors
-tgc_calloc()
-tgc_realloc()
-tgc_free()
+[x] pause/unpause
+[x] minptr/maxptr optimization
+[x] basic hash table (loop all the way around)
+[x] hash table resizing
+[x] smarter hash table resizing (loadfactor, primes)
+[x] cache hashes
+[x] robin hood hashing
+[ ] TGC_ROOT
+[ ] TGC_LEAF
+[ ] destructors
+[ ] tgc_calloc()
+[ ] tgc_realloc()
+[ ] tgc_free()
