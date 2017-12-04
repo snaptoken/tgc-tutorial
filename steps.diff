@@ -2512,6 +2512,15 @@ diff --git a/tgc.c b/tgc.c
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
+@@ -55,7 +55,7 @@ static void tgc_add_ptr(
+ }
+ 
+ static void tgc_rem_ptr(tgc_t *gc, void *ptr) {
+-  size_t i, j, h;
++  size_t i, j, h, nj, nh;
+ 
+   if (gc->nitems == 0) { return; }
+ 
 @@ -66,6 +66,18 @@ static void tgc_rem_ptr(tgc_t *gc, void *ptr) {
      if (h == 0 || j > tgc_probe(gc, i, h)) { return; }
      if (gc->items[i].ptr == ptr) {
