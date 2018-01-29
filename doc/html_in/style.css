@@ -88,27 +88,36 @@ h1 {
 }
 
 h2 {
-  font-size: 26px;
+  /*font-size: 26px;*/
+  font-size: 32px;
 }
 
 h3 {
   position: absolute;
-  margin-top: 12px;
-  margin-left: -48px;
+  margin-top: 14px;
+  margin-left: -148px;
   font-size: 48px;
   font-family: Helvetica;
   line-height: 130%;
+  width: 128px;
+  text-align: right;
 }
 
 h3::before {
   content: ' ';
   display: block;
-  width: 747px;
-  border-bottom: 1px dashed #e7c;
+  width: 698px;
+  border-bottom: 1px dashed #ee77cc87;
+  margin-left: 147px;
 }
 
 p {
   margin-top: 18px;
+}
+
+h3 + p {
+  font-size: 22px;
+  margin-top: 22px;
 }
 
 ul, ol {
@@ -175,12 +184,13 @@ h1 kbd, h2 kbd, h3 kbd, h4 kbd, h5 kbd, h6 kbd {
 }
 
 .diff .diff-header {
-  display: flex;
+  display: none;
+  /*display: flex;
   justify-content: space-between;
   padding: 0 5px;
   background-color: #ede7e3;
   font-size: 16px;
-  color: #666;
+  color: #666;*/
 }
 
 .diff .step-number {
