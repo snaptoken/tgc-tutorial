@@ -1,0 +1,701 @@
+# One Fell Sweep
+
+In this chapter, you will build an allocator function called `tgc_alloc()`. It
+has the same interface as the standard library's `malloc()`, except you don't
+need to call `free()` on the memory you allocate with it!
+
+However, it has a
+very bad garbage collection algorithm. The only time it frees up memory is when
+you call `tgc_stop()` at the end of your program. This function frees *all* the
+allocated memory at once.
+
+At this point, it's not much better than no garbage collection at all. But it
+lays the foundation for building a proper garbage collector in the rest of the
+booklet.
+
+## The allocator
+
+In this section, you will create the two source files `tgc.h` and `tgc.c`, and
+write the initial implementation of the main allocation function,
+`tgc_alloc()`.
+
+~~~
+
+Create `tgc.h`, and add a function prototype for `tgc_alloc()`
+
+Just like `malloc()`, it takes the number of bytes to allocate and returns a
+pointer to the allocated memory.
+
+diff --git a/tgc.h b/tgc.h
+new file mode 100644
+--- /dev/null
++++ b/tgc.h
+@@ -0,0 +1,1 @@
++void *tgc_alloc(size_t size);
+
+~~~
+
+Include `<stdlib.h>` to get the `size_t` type
+
+diff --git a/tgc.h b/tgc.h
+--- a/tgc.h
++++ b/tgc.h
+@@ -1,1 +1,3 @@
++#include <stdlib.h>
++
+|void *tgc_alloc(size_t size);
+
+~~~
+
+Wrap the header file in an [#include guard](https://en.wikipedia.org/wiki/Include_guard)
+
+This is a standard practice in C that prevents users of the library from
+getting "that's already been defined" errors when they include the header file
+multiple times.
+
+diff --git a/tgc.h b/tgc.h
+--- a/tgc.h
++++ b/tgc.h
+@@ -1,3 +1,8 @@
++#ifndef TGC_H
++#define TGC_H
++
+|#include <stdlib.h>
+|
+|void *tgc_alloc(size_t size);
++
++#endif
+
+~~~
+
+Create a new file named `tgc.c`, and implement `tgc_alloc()`
+
+For now it acts the same as `malloc()`.
+
+diff --git a/tgc.c b/tgc.c
+new file mode 100644
+--- /dev/null
++++ b/tgc.c
+@@ -0,0 +1,4 @@
++void *tgc_alloc(size_t size) {
++  void *ptr = malloc(size);
++  return ptr;
++}
+
+~~~
+
+Include the header file
+
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -1,3 +1,5 @@
++#include "tgc.h"
++
+|void *tgc_alloc(size_t size) {
+|  void *ptr = malloc(size);
+|  return ptr;
+
+~~~
+
+Add an "allocator functions" section
+
+`tgc.c` is going to end up growing very large. To help find our way around it,
+we're going to add special comments that denote different sections in the file.
+Here, we're putting `tgc_alloc()` under the "allocator functions" section.
+
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -1,5 +1,7 @@
+|#include "tgc.h"
+|
++/*** allocator functions ***/
++
+|void *tgc_alloc(size_t size) {
+|  void *ptr = malloc(size);
+|  return ptr;
+
+~~~
+
+## Pointer table
+
+We need to keep track of each piece of memory we allocate, so that we can
+garbage collect it (free it) later. We will save each allocated pointer to a
+pointer table, which for now will be a simple array of structs.
+
+~~~
+
+Add the `tgc_ptr_t` struct
+
+This will keep track of all the metadata we need to remember about each pointer
+we allocate. For now all we need to store is the pointer itself.
+
+diff --git a/tgc.h b/tgc.h
+--- a/tgc.h
++++ b/tgc.h
+@@ -3,6 +3,10 @@
+|
+|#include <stdlib.h>
+|
++typedef struct {
++  void *ptr;
++} tgc_ptr_t;
++
+|void *tgc_alloc(size_t size);
+|
+|#endif
+
+~~~
+
+Let's create an array to hold the metadata for each block of allocated memory.
+In other words, an array of `tgc_ptr_t` structs. We'll make it a dynamically
+allocated array, and keep it in a struct that will contain all the global state
+of our garbage collector.
+
+~~~
+
+Add the `tgc_t` struct
+
+diff --git a/tgc.h b/tgc.h
+--- a/tgc.h
++++ b/tgc.h
+@@ -7,6 +7,11 @@
+|  void *ptr;
+|} tgc_ptr_t;
+|
++typedef struct {
++  tgc_ptr_t *items;
++  size_t nitems, nslots;
++} tgc_t;
++
+|void *tgc_alloc(size_t size);
+|
+|#endif
+
+~~~
+
+`nitems` is the number of slots in the array filled with `tgc_ptr_t` values,
+and `nslots` is the total number of slots available in the array. When `nitems`
+is equal to `nslots`, the array is full and we'll have to grow the array.
+
+To initialize our global state struct, we'll have the user of our library call
+a function called `tgc_start()` at the beginning of their program. Here is the
+prototype.
+
+~~~
+
+diff --git a/tgc.h b/tgc.h
+--- a/tgc.h
++++ b/tgc.h
+@@ -12,6 +12,8 @@
+|  size_t nitems, nslots;
+|} tgc_t;
+|
++void tgc_start(tgc_t *gc);
++
+|void *tgc_alloc(size_t size);
+|
+|#endif
+
+~~~
+
+And here is the implementation. Put it in a new "gc control" (garbage
+collection control) section.
+
+~~~
+
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -1,5 +1,13 @@
+|#include "tgc.h"
+|
++/*** gc control ***/
++
++void tgc_start(tgc_t *gc) {
++  gc->nitems = 0;
++  gc->nslots = 0;
++  gc->items = NULL;
++}
++
+|/*** allocator functions ***/
+|
+|void *tgc_alloc(size_t size) {
+
+~~~
+
+It initializes `items` to be an empty array with no space allocated.
+
+We're going to want to add each pointer we allocate to this array. To be able
+to do that, `tgc_alloc()` needs to take the global state struct as an argument.
+In fact, every public function of our library will have `tgc_t *gc` as its
+first argument.
+
+Let's add it to the function prototype first.
+
+~~~
+
+diff --git a/tgc.h b/tgc.h
+--- a/tgc.h
++++ b/tgc.h
+@@ -14,6 +14,6 @@
+|
+|void tgc_start(tgc_t *gc);
+|
+-void *tgc_alloc(size_t size);
++void *tgc_alloc(tgc_t *gc, size_t size);
+|
+|#endif
+
+~~~
+
+Now add it to the function definition.
+
+~~~
+
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -10,7 +10,7 @@
+|
+|/*** allocator functions ***/
+|
+-void *tgc_alloc(size_t size) {
++void *tgc_alloc(tgc_t *gc, size_t size) {
+|  void *ptr = malloc(size);
+|  return ptr;
+|}
+
+~~~
+
+Alright, now let's work on adding each pointer we allocate to the `gc->items`
+array. Start by calling a nonexistent `tgc_add()` function.
+
+~~~
+
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -12,5 +12,6 @@
+|
+|void *tgc_alloc(tgc_t *gc, size_t size) {
+|  void *ptr = malloc(size);
++  tgc_add(gc, ptr);
+|  return ptr;
+|}
+
+~~~
+
+We'll implement `tgc_add()` by calling two more nonexistent functions:
+`tgc_resize()` will ensure there is enough room in the array to add one more
+pointer, and `tgc_add_ptr()` will actually add it to the array.
+
+~~~
+
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -10,6 +10,12 @@
+|
+|/*** allocator functions ***/
+|
++static void tgc_add(tgc_t *gc, void *ptr) {
++  gc->nitems++;
++  tgc_resize(gc);
++  tgc_add_ptr(gc, ptr);
++}
++
+|void *tgc_alloc(tgc_t *gc, size_t size) {
+|  void *ptr = malloc(size);
+|  tgc_add(gc, ptr);
+
+~~~
+
+Write a simple `tgc_resize()` function in a new "resize pointer table" section.
+If the array is full, it will grow the array by doubling its size.
+
+~~~
+
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -1,5 +1,14 @@
+|#include "tgc.h"
+|
++/*** resize pointer table ***/
++
++static void tgc_resize(tgc_t *gc) {
++  if (gc->nslots >= gc->nitems) return;
++
++  gc->nslots = gc->nitems * 2;
++  gc->items = calloc(gc->nslots, sizeof(tgc_ptr_t));
++}
++
+|/*** gc control ***/
+|
+|void tgc_start(tgc_t *gc) {
+
+~~~
+
+`calloc()` sets all the bytes we're allocating to 0. This sets all our pointers
+to `NULL`, which for us is a special value that means that slot in the array is
+considered empty.
+
+Let's copy the contents of the old array into the beginning of the new array
+we've allocated. This is safe because the array currently only ever grows, and
+never shrinks.
+
+~~~
+
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -3,10 +3,15 @@
+|/*** resize pointer table ***/
+|
+|static void tgc_resize(tgc_t *gc) {
++  tgc_ptr_t *old_items = gc->items;
++  size_t old_size = gc->nslots;
++
+|  if (gc->nslots >= gc->nitems) return;
+|
+|  gc->nslots = gc->nitems * 2;
+|  gc->items = calloc(gc->nslots, sizeof(tgc_ptr_t));
++
++  memcpy(gc->items, old_items, old_size * sizeof(tgc_ptr_t));
+|}
+|
+|/*** gc control ***/
+
+~~~
+
+We need to include `<string.h>` to get `memcpy()`.
+
+~~~
+
+diff --git a/tgc.h b/tgc.h
+--- a/tgc.h
++++ b/tgc.h
+@@ -2,6 +2,7 @@
+|#define TGC_H
+|
+|#include <stdlib.h>
++#include <string.h>
+|
+|typedef struct {
+|  void *ptr;
+
+~~~
+
+Don't forget to free the old array!
+
+~~~
+
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -12,6 +12,8 @@
+|  gc->items = calloc(gc->nslots, sizeof(tgc_ptr_t));
+|
+|  memcpy(gc->items, old_items, old_size * sizeof(tgc_ptr_t));
++
++  free(old_items);
+|}
+|
+|/*** gc control ***/
+
+~~~
+
+OK, that's it for `tgc_resize()`. Now we can implement the other nonexistent
+function we used earlier, `tgc_add_ptr()`. Thanks to `tgc_add()`, we can assume
+there is at least one empty slot in the array, so all we have to do is loop
+through the array, find that empty slot, and fill it with the pointer. This
+goes into a new "pointer table operations" section.
+
+~~~
+
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -1,5 +1,21 @@
+|#include "tgc.h"
+|
++/*** pointer table operations ***/
++
++static void tgc_add_ptr(tgc_t *gc, void *ptr) {
++  tgc_ptr_t item;
++  size_t i;
++
++  item.ptr = ptr;
++
++  for (i = 0; i < gc->nslots; i++) {
++    if (gc->items[i].ptr == NULL) {
++      gc->items[i] = item;
++      return;
++    }
++  }
++}
++
+|/*** resize pointer table ***/
+|
+|static void tgc_resize(tgc_t *gc) {
+
+~~~
+
+((Do we really need to do this check now? When would a pointer ever be
+double-added anyway? This won't work between the point where we start removing
+pointers from the array and the point where we actually start using it a hash
+table.))
+
+~~~
+
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -13,6 +13,7 @@
+|      gc->items[i] = item;
+|      return;
+|    }
++    if (gc->items[i].ptr == item.ptr) { return; }
+|  }
+|}
+|
+
+~~~
+
+## Error handling
+
+OK. Everything's now in place to keep track of pointers. Let's go back and do
+some error handling.
+
+If `malloc()` returns `NULL`, that means it failed due to being out of memory.
+In that case, we'll skip calling `tgc_add()` and just return the `NULL`
+pointer.
+
+~~~
+
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -51,6 +51,8 @@
+|
+|void *tgc_alloc(tgc_t *gc, size_t size) {
+|  void *ptr = malloc(size);
+-  tgc_add(gc, ptr);
++  if (ptr != NULL) {
++    tgc_add(gc, ptr);
++  }
+|  return ptr;
+|}
+
+~~~
+
+We also need to handle an out-of-memory `NULL` return value from `calloc()` in
+our `tgc_resize()` function. If it won't let us grow the array, we'll keep the
+old array and return `0` (false) to indicate that the resize failed and that
+the array might not have any empty spaces. We'll return `1` (true) on success.
+The return type of `tgc_resize()` will have to be changed from `void` to `int`.
+
+~~~
+
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -19,18 +19,26 @@
+|
+|/*** resize pointer table ***/
+|
+-static void tgc_resize(tgc_t *gc) {
++static int tgc_resize(tgc_t *gc) {
+|  tgc_ptr_t *old_items = gc->items;
+|  size_t old_size = gc->nslots;
+|
+-  if (gc->nslots >= gc->nitems) return;
++  if (gc->nslots >= gc->nitems) return 1;
+|
+|  gc->nslots = gc->nitems * 2;
+|  gc->items = calloc(gc->nslots, sizeof(tgc_ptr_t));
+|
++  if (gc->items == NULL) {
++    gc->nslots = old_size;
++    gc->items = old_items;
++    return 0;
++  }
++
+|  memcpy(gc->items, old_items, old_size * sizeof(tgc_ptr_t));
+|
+|  free(old_items);
++
++  return 1;
+|}
+|
+|/*** gc control ***/
+
+~~~
+
+Now we have to handle the `0` return value from `tgc_resize()` in `tgc_add()`.
+If `tgc_resize()` failed, then calling `tgc_add_ptr()` is unsafe because the
+array might be full. So in that case, we'll just free the allocated block of
+memory and return `NULL` to tell the allocation function that the allocation
+should has failed.
+
+~~~
+
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -51,10 +51,17 @@
+|
+|/*** allocator functions ***/
+|
+-static void tgc_add(tgc_t *gc, void *ptr) {
++static void *tgc_add(tgc_t *gc, void *ptr) {
+|  gc->nitems++;
+-  tgc_resize(gc);
+-  tgc_add_ptr(gc, ptr);
++
++  if (tgc_resize(gc)) {
++    tgc_add_ptr(gc, ptr);
++    return ptr;
++  } else {
++    gc->nitems--;
++    free(ptr);
++    return NULL;
++  }
+|}
+|
+|void *tgc_alloc(tgc_t *gc, size_t size) {
+
+~~~
+
+In `tgc_alloc()`, return the value that `tgc_add()` returns, so that if it
+failed adding the pointer to the array (in which case it also freed the
+pointer), we'll return `NULL` from `tgc_alloc()`. Otherwise, the allocated
+pointer will be returned, as before.
+
+~~~
+
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -67,7 +67,7 @@
+|void *tgc_alloc(tgc_t *gc, size_t size) {
+|  void *ptr = malloc(size);
+|  if (ptr != NULL) {
+-    tgc_add(gc, ptr);
++    ptr = tgc_add(gc, ptr);
+|  }
+|  return ptr;
+|}
+
+~~~
+
+## Sweep
+
+It's time to start implementing the sweep phase of our mark and sweep garbage
+collector. For now, `tgc_sweep()` will simply free every pointer in the pointer
+table, removing each one from the table as it goes. Put this in a new section
+called "mark and sweep".
+
+~~~
+
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -41,6 +41,19 @@
+|  return 1;
+|}
+|
++/*** mark and sweep ***/
++
++static void tgc_sweep(tgc_t *gc) {
++  size_t i;
++
++  for (i = 0; i < gc->nslots; i++) {
++    if (gc->items[i].ptr == NULL) { continue; }
++    free(gc->items[i].ptr);
++    memset(&gc->items[i], 0, sizeof(tgc_ptr_t));
++    gc->nitems--;
++  }
++}
++
+|/*** gc control ***/
+|
+|void tgc_start(tgc_t *gc) {
+
+~~~
+
+If the `ptr` field is `NULL`, that means the slot is empty so we skip it.
+`memset`ting the struct to `0`'s has the effect of setting `ptr` to `NULL`,
+marking the slot as empty.
+
+Let's skip the sweep phase altogether when there are no allocations. Garbage
+collection is expensive, so we should take any chance we get to skip an entire
+phase like this.
+
+~~~
+
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -46,6 +46,8 @@
+|static void tgc_sweep(tgc_t *gc) {
+|  size_t i;
+|
++  if (gc->nitems == 0) { return; }
++
+|  for (i = 0; i < gc->nslots; i++) {
+|    if (gc->items[i].ptr == NULL) { continue; }
+|    free(gc->items[i].ptr);
+
+~~~
+
+Let's create a `tgc_stop()` function to go with `tgc_start()`. The user is
+expected to call `tgc_stop()` at the end of their program, or when they are
+done using garbage collection. It should run the sweep phase to free all
+allocated memory, and also free the memory used by the garbage collector's
+internal structures (i.e. the pointer table).
+
+Here is the `tgc_stop()` function prototype.
+
+~~~
+
+diff --git a/tgc.h b/tgc.h
+--- a/tgc.h
++++ b/tgc.h
+@@ -14,6 +14,7 @@
+|} tgc_t;
+|
+|void tgc_start(tgc_t *gc);
++void tgc_stop(tgc_t *gc);
+|
+|void *tgc_alloc(tgc_t *gc, size_t size);
+|
+
+~~~
+
+Here is the `tgc_stop()` implementation.
+
+~~~
+
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -64,6 +64,11 @@
+|  gc->items = NULL;
+|}
+|
++void tgc_stop(tgc_t *gc) {
++  tgc_sweep(gc);
++  free(gc->items);
++}
++
+|/*** allocator functions ***/
+|
+|static void *tgc_add(tgc_t *gc, void *ptr) {
+
+~~~
+
+In the [next chapter](03.mark.html), we will implement the mark phase of our
+mark and sweep garbage collector.

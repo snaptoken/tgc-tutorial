@@ -1,0 +1,1123 @@
+# Extra Features
+
+~~~
+
+change-mark-to-flags
+
+diff --git a/tgc.h b/tgc.h
+--- a/tgc.h
++++ b/tgc.h
+@@ -6,9 +6,13 @@
+|#include <stdlib.h>
+|#include <string.h>
+|
++enum {
++  TGC_MARK = 0x01
++};
++
+|typedef struct {
+|  void *ptr;
+-  int mark;
++  int flags;
+|  size_t size, hash;
+|} tgc_ptr_t;
+|
+
+~~~
+
+add-ptr-flags
+
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -12,12 +12,12 @@
+|  return v;
+|}
+|
+-static void tgc_add_ptr(tgc_t *gc, void *ptr, size_t size) {
++static void tgc_add_ptr(tgc_t *gc, void *ptr, size_t size, int flags) {
+|  tgc_ptr_t item, tmp;
+|  size_t i, j, h, p;
+|
+|  item.ptr = ptr;
+-  item.mark = 0;
++  item.flags = flags;
+|  item.size = size;
+|  item.hash = i+1;
+|
+
+~~~
+
+rehash-flags
+
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -82,7 +82,7 @@
+|
+|  for (i = 0; i < old_size; i++) {
+|    if (old_items[i].hash != 0) {
+-      tgc_add_ptr(gc, old_items[i].ptr, old_items[i].size);
++      tgc_add_ptr(gc, old_items[i].ptr, old_items[i].size, old_items[i].flags);
+|    }
+|  }
+|
+
+~~~
+
+add-flags
+
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -229,7 +229,7 @@
+|
+|/*** allocator functions ***/
+|
+-static void *tgc_add(tgc_t *gc, void *ptr, size_t size) {
++static void *tgc_add(tgc_t *gc, void *ptr, size_t size, int flags) {
+|  gc->nitems++;
+|  gc->maxptr = ((uintptr_t)ptr) + size > gc->maxptr ?
+|    ((uintptr_t)ptr) + size : gc->maxptr;
+@@ -237,7 +237,7 @@
+|    ((uintptr_t)ptr)        : gc->minptr;
+|
+|  if (tgc_resize_more(gc)) {
+-    tgc_add_ptr(gc, ptr, size);
++    tgc_add_ptr(gc, ptr, size, flags);
+|    if (!gc->paused && gc->nitems > gc->mitems) {
+|      tgc_run(gc);
+|    }
+
+~~~
+
+zero-flags
+
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -252,7 +252,7 @@
+|void *tgc_alloc(tgc_t *gc, size_t size) {
+|  void *ptr = malloc(size);
+|  if (ptr != NULL) {
+-    ptr = tgc_add(gc, ptr, size);
++    ptr = tgc_add(gc, ptr, size, 0);
+|  }
+|  return ptr;
+|}
+
+~~~
+
+mark-ptr-flags
+
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -117,8 +117,8 @@
+|    h = gc->items[i].hash;
+|    if (h == 0 || j > tgc_probe(gc, i, h)) { return; }
+|    if (ptr == gc->items[i].ptr) {
+-      if (gc->items[i].mark) { return; }
+-      gc->items[i].mark = 1;
++      if (gc->items[i].flags & TGC_MARK) { return; }
++      gc->items[i].flags |= TGC_MARK;
+|      for (k = 0; k < gc->items[i].size/sizeof(void*); k++) {
+|        tgc_mark_ptr(gc, ((void**)gc->items[i].ptr)[k]);
+|      }
+
+~~~
+
+sweep-flags
+
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -164,8 +164,8 @@
+|
+|  i = 0;
+|  while (i < gc->nslots) {
+-    if (gc->items[i].hash == 0) { i++; continue; }
+-    if (gc->items[i].mark)      { i++; continue; }
++    if (gc->items[i].hash ==        0) { i++; continue; }
++    if (gc->items[i].flags & TGC_MARK) { i++; continue; }
+|
+|    free(gc->items[i].ptr);
+|    memset(&gc->items[i], 0, sizeof(tgc_ptr_t));
+
+~~~
+
+sweep-reset-mark-flag
+
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -186,7 +186,7 @@
+|  }
+|
+|  for (i = 0; i < gc->nslots; i++) {
+-    gc->items[i].mark = 0;
++    gc->items[i].flags &= ~TGC_MARK;
+|  }
+|
+|  tgc_resize_less(gc);
+
+~~~
+
+add-root-flag
+
+diff --git a/tgc.h b/tgc.h
+--- a/tgc.h
++++ b/tgc.h
+@@ -7,7 +7,8 @@
+|#include <string.h>
+|
+|enum {
+-  TGC_MARK = 0x01
++  TGC_MARK = 0x01,
++  TGC_ROOT = 0x02
+|};
+|
+|typedef struct {
+
+~~~
+
+mark-roots
+
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -146,12 +146,24 @@
+|}
+|
+|static void tgc_mark(tgc_t *gc) {
++  size_t i, k;
+|  jmp_buf env;
+|
+|  void (*volatile mark_stack)(tgc_t*) = tgc_mark_stack;
+|
+|  if (gc->nitems == 0) { return; }
+|
++  for (i = 0; i < gc->nslots; i++) {
++    if (gc->items[i].hash ==        0) { continue; }
++    if (gc->items[i].flags & TGC_MARK) { continue; }
++    if (gc->items[i].flags & TGC_ROOT) {
++      gc->items[i].flags |= TGC_MARK;
++      for (k = 0; k < gc->items[i].size/sizeof(void*); k++) {
++        tgc_mark_ptr(gc, ((void**)gc->items[i].ptr)[k]);
++      }
++    }
++  }
++
+|  memset(&env, 0, sizeof(jmp_buf));
+|  setjmp(env);
+|  mark_stack(gc);
+
+~~~
+
+sweep-skip-roots
+
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -178,6 +178,7 @@
+|  while (i < gc->nslots) {
+|    if (gc->items[i].hash ==        0) { i++; continue; }
+|    if (gc->items[i].flags & TGC_MARK) { i++; continue; }
++    if (gc->items[i].flags & TGC_ROOT) { i++; continue; }
+|
+|    free(gc->items[i].ptr);
+|    memset(&gc->items[i], 0, sizeof(tgc_ptr_t));
+
+~~~
+
+alloc-opt-prototype
+
+diff --git a/tgc.h b/tgc.h
+--- a/tgc.h
++++ b/tgc.h
+@@ -34,4 +34,6 @@
+|
+|void *tgc_alloc(tgc_t *gc, size_t size);
+|
++void *tgc_alloc_opt(tgc_t *gc, size_t size, int flags);
++
+|#endif
+
+~~~
+
+alloc-opt
+
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -262,10 +262,10 @@
+|  }
+|}
+|
+-void *tgc_alloc(tgc_t *gc, size_t size) {
++void *tgc_alloc_opt(tgc_t *gc, size_t size, int flags) {
+|  void *ptr = malloc(size);
+|  if (ptr != NULL) {
+-    ptr = tgc_add(gc, ptr, size, 0);
++    ptr = tgc_add(gc, ptr, size, flags);
+|  }
+|  return ptr;
+|}
+
+~~~
+
+alloc-delegates
+
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -262,6 +262,10 @@
+|  }
+|}
+|
++void *tgc_alloc(tgc_t *gc, size_t size) {
++  return tgc_alloc_opt(gc, size, 0);
++}
++
+|void *tgc_alloc_opt(tgc_t *gc, size_t size, int flags) {
+|  void *ptr = malloc(size);
+|  if (ptr != NULL) {
+
+~~~
+
+get-set-flags-prototypes
+
+diff --git a/tgc.h b/tgc.h
+--- a/tgc.h
++++ b/tgc.h
+@@ -36,4 +36,7 @@
+|
+|void *tgc_alloc_opt(tgc_t *gc, size_t size, int flags);
+|
++int tgc_get_flags(tgc_t *gc, void *ptr);
++int tgc_set_flags(tgc_t *gc, void *ptr, int flags);
++
+|#endif
+
+~~~
+
+get-set-flags
+
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -273,3 +273,16 @@
+|  }
+|  return ptr;
+|}
++
++/*** getters and setters ***/
++
++int tgc_get_flags(tgc_t *gc, void *ptr) {
++  tgc_ptr_t *p = tgc_get_ptr(gc, ptr);
++  if (p) { return p->flags; }
++  return 0;
++}
++
++void tgc_set_flags(tgc_t *gc, void *ptr, int flags) {
++  tgc_ptr_t *p = tgc_get_ptr(gc, ptr);
++  if (p) { p->flags = flags; }
++}
+
+~~~
+
+get-ptr
+
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -12,6 +12,18 @@
+|  return v;
+|}
+|
++static tgc_ptr_t *tgc_get_ptr(tgc_t *gc, void *ptr) {
++  size_t i, j, h;
++  i = tgc_hash(ptr) % gc->nslots; j = 0;
++  while (1) {
++    h = gc->items[i].hash;
++    if (h == 0 || j > tgc_probe(gc, i, h)) { return NULL; }
++    if (gc->items[i].ptr == ptr) { return &gc->items[i]; }
++    i = (i+1) % gc->nslots; j++;
++  }
++  return NULL;
++}
++
+|static void tgc_add_ptr(tgc_t *gc, void *ptr, size_t size, int flags) {
+|  tgc_ptr_t item, tmp;
+|  size_t i, j, h, p;
+
+~~~
+
+get-size-prototype
+
+diff --git a/tgc.h b/tgc.h
+--- a/tgc.h
++++ b/tgc.h
+@@ -38,5 +38,6 @@
+|
+|int tgc_get_flags(tgc_t *gc, void *ptr);
+|int tgc_set_flags(tgc_t *gc, void *ptr, int flags);
++size_t tgc_get_size(tgc_t *gc, void *ptr);
+|
+|#endif
+
+~~~
+
+get-size
+
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -298,3 +298,9 @@
+|  tgc_ptr_t *p = tgc_get_ptr(gc, ptr);
+|  if (p) { p->flags = flags; }
+|}
++
++size_t tgc_get_size(tgc_t *gc, void *ptr) {
++  tgc_ptr_t *p = tgc_get_ptr(gc, ptr);
++  if (p) { return p->size; }
++  return 0;
++}
+
+~~~
+
+add-leaf-flag
+
+diff --git a/tgc.h b/tgc.h
+--- a/tgc.h
++++ b/tgc.h
+@@ -8,7 +8,8 @@
+|
+|enum {
+|  TGC_MARK = 0x01,
+-  TGC_ROOT = 0x02
++  TGC_ROOT = 0x02,
++  TGC_LEAF = 0x04
+|};
+|
+|typedef struct {
+
+~~~
+
+mark-ptr-leaf
+
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -131,6 +131,7 @@
+|    if (ptr == gc->items[i].ptr) {
+|      if (gc->items[i].flags & TGC_MARK) { return; }
+|      gc->items[i].flags |= TGC_MARK;
++      if (gc->items[i].flags & TGC_LEAF) { return; }
+|      for (k = 0; k < gc->items[i].size/sizeof(void*); k++) {
+|        tgc_mark_ptr(gc, ((void**)gc->items[i].ptr)[k]);
+|      }
+
+~~~
+
+mark-leaf
+
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -171,6 +171,7 @@
+|    if (gc->items[i].flags & TGC_MARK) { continue; }
+|    if (gc->items[i].flags & TGC_ROOT) {
+|      gc->items[i].flags |= TGC_MARK;
++      if (gc->items[i].flags & TGC_LEAF) { continue; }
+|      for (k = 0; k < gc->items[i].size/sizeof(void*); k++) {
+|        tgc_mark_ptr(gc, ((void**)gc->items[i].ptr)[k]);
+|      }
+
+~~~
+
+add-dtor
+
+diff --git a/tgc.h b/tgc.h
+--- a/tgc.h
++++ b/tgc.h
+@@ -16,6 +16,7 @@
+|  void *ptr;
+|  int flags;
+|  size_t size, hash;
++  void (*dtor)(void*);
+|} tgc_ptr_t;
+|
+|typedef struct {
+
+~~~
+
+alloc-opt-dtor-prototype
+
+diff --git a/tgc.h b/tgc.h
+--- a/tgc.h
++++ b/tgc.h
+@@ -36,7 +36,7 @@
+|
+|void *tgc_alloc(tgc_t *gc, size_t size);
+|
+-void *tgc_alloc_opt(tgc_t *gc, size_t size, int flags);
++void *tgc_alloc_opt(tgc_t *gc, size_t size, int flags, void(*dtor)(void*));
+|
+|int tgc_get_flags(tgc_t *gc, void *ptr);
+|int tgc_set_flags(tgc_t *gc, void *ptr, int flags);
+
+~~~
+
+alloc-opt-dtor
+
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -280,10 +280,10 @@
+|  return tgc_alloc_opt(gc, size, 0);
+|}
+|
+-void *tgc_alloc_opt(tgc_t *gc, size_t size, int flags) {
++void *tgc_alloc_opt(tgc_t *gc, size_t size, int flags, void(*dtor)(void*)) {
+|  void *ptr = malloc(size);
+|  if (ptr != NULL) {
+-    ptr = tgc_add(gc, ptr, size, flags);
++    ptr = tgc_add(gc, ptr, size, flags, dtor);
+|  }
+|  return ptr;
+|}
+
+~~~
+
+alloc-dtor
+
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -277,7 +277,7 @@
+|}
+|
+|void *tgc_alloc(tgc_t *gc, size_t size) {
+-  return tgc_alloc_opt(gc, size, 0);
++  return tgc_alloc_opt(gc, size, 0, NULL);
+|}
+|
+|void *tgc_alloc_opt(tgc_t *gc, size_t size, int flags, void(*dtor)(void*)) {
+
+~~~
+
+add-pass-dtor
+
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -256,7 +256,10 @@
+|
+|/*** allocator functions ***/
+|
+-static void *tgc_add(tgc_t *gc, void *ptr, size_t size, int flags) {
++static void *tgc_add(
++  tgc_t *gc, void *ptr, size_t size,
++  int flags, void(*dtor)(void*)
++) {
+|  gc->nitems++;
+|  gc->maxptr = ((uintptr_t)ptr) + size > gc->maxptr ?
+|    ((uintptr_t)ptr) + size : gc->maxptr;
+@@ -264,7 +267,7 @@
+|    ((uintptr_t)ptr)        : gc->minptr;
+|
+|  if (tgc_resize_more(gc)) {
+-    tgc_add_ptr(gc, ptr, size, flags);
++    tgc_add_ptr(gc, ptr, size, flags, dtor);
+|    if (!gc->paused && gc->nitems > gc->mitems) {
+|      tgc_run(gc);
+|    }
+
+~~~
+
+set-dtor
+
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -24,7 +24,10 @@
+|  return NULL;
+|}
+|
+-static void tgc_add_ptr(tgc_t *gc, void *ptr, size_t size, int flags) {
++static void tgc_add_ptr(
++  tgc_t *gc, void *ptr, size_t size,
++  int flags, void(*dtor)(void*)
++) {
+|  tgc_ptr_t item, tmp;
+|  size_t i, j, h, p;
+|
+@@ -32,6 +35,7 @@
+|  item.flags = flags;
+|  item.size = size;
+|  item.hash = i+1;
++  item.dtor = dtor;
+|
+|  i = tgc_hash(ptr) % gc->nslots; j = 0;
+|
+
+~~~
+
+rehash-dtor
+
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -98,7 +98,9 @@
+|
+|  for (i = 0; i < old_size; i++) {
+|    if (old_items[i].hash != 0) {
+-      tgc_add_ptr(gc, old_items[i].ptr, old_items[i].size, old_items[i].flags);
++      tgc_add_ptr(gc,
++        old_items[i].ptr, old_items[i].size,
++        old_items[i].flags, old_items[i].dtor);
+|    }
+|  }
+|
+
+~~~
+
+get-set-dtor-prototypes
+
+diff --git a/tgc.h b/tgc.h
+--- a/tgc.h
++++ b/tgc.h
+@@ -40,6 +40,8 @@
+|
+|int tgc_get_flags(tgc_t *gc, void *ptr);
+|int tgc_set_flags(tgc_t *gc, void *ptr, int flags);
++void(*tgc_get_dtor(tgc_t *gc, void *ptr))(void*);
++void tgc_set_dtor(tgc_t *gc, void *ptr, void(*dtor)(void*));
+|size_t tgc_get_size(tgc_t *gc, void *ptr);
+|
+|#endif
+
+~~~
+
+get-set-dtor
+
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -310,6 +310,17 @@
+|  if (p) { p->flags = flags; }
+|}
+|
++void(*tgc_get_dtor(tgc_t *gc, void *ptr))(void*) {
++  tgc_ptr_t *p = tgc_get_ptr(gc, ptr);
++  if (p) { return p->dtor; }
++  return NULL;
++}
++
++void tgc_set_dtor(tgc_t *gc, void *ptr, void(*dtor)(void*)) {
++  tgc_ptr_t *p = tgc_get_ptr(gc, ptr);
++  if (p) { p->dtor = dtor; }
++}
++
+|size_t tgc_get_size(tgc_t *gc, void *ptr) {
+|  tgc_ptr_t *p = tgc_get_ptr(gc, ptr);
+|  if (p) { return p->size; }
+
+~~~
+
+add-frees
+
+diff --git a/tgc.h b/tgc.h
+--- a/tgc.h
++++ b/tgc.h
+@@ -23,9 +23,9 @@
+|  void *bottom;
+|  int paused;
+|  uintptr_t minptr, maxptr;
+-  tgc_ptr_t *items;
++  tgc_ptr_t *items, *frees;
+|  double loadfactor, sweepfactor;
+-  size_t nitems, nslots, mitems;
++  size_t nitems, nslots, mitems, nfrees;
+|} tgc_t;
+|
+|void tgc_start(tgc_t *gc, void *stk);
+
+~~~
+
+init-frees
+
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -235,7 +235,9 @@
+|  gc->nitems = 0;
+|  gc->nslots = 0;
+|  gc->mitems = 0;
++  gc->nfrees = 0;
+|  gc->items = NULL;
++  gc->frees = NULL;
+|  gc->minptr = UINTPTR_MAX;
+|  gc->maxptr = 0;
+|  gc->loadfactor = 0.9;
+
+~~~
+
+stop-frees
+
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -247,6 +247,7 @@
+|void tgc_stop(tgc_t *gc) {
+|  tgc_sweep(gc);
+|  free(gc->items);
++  free(gc->frees);
+|}
+|
+|void tgc_pause(tgc_t *gc) {
+
+~~~
+
+sweep-count-frees
+
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -194,6 +194,14 @@
+|
+|  if (gc->nitems == 0) { return; }
+|
++  gc->nfrees = 0;
++  for (i = 0; i < gc->nslots; i++) {
++    if (gc->items[i].hash ==        0) { continue; }
++    if (gc->items[i].flags & TGC_MARK) { continue; }
++    if (gc->items[i].flags & TGC_ROOT) { continue; }
++    gc->nfrees++;
++  }
++
+|  i = 0;
+|  while (i < gc->nslots) {
+|    if (gc->items[i].hash ==        0) { i++; continue; }
+
+~~~
+
+sweep-alloc-frees
+
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -202,6 +202,9 @@
+|    gc->nfrees++;
+|  }
+|
++  gc->frees = realloc(gc->frees, sizeof(tgc_ptr_t) * gc->nfrees);
++  if (gc->frees == NULL) { return; }
++
+|  i = 0;
+|  while (i < gc->nslots) {
+|    if (gc->items[i].hash ==        0) { i++; continue; }
+
+~~~
+
+sweep-add-to-frees
+
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -190,7 +190,7 @@
+|}
+|
+|static void tgc_sweep(tgc_t *gc) {
+-  size_t i, j, nj, nh;
++  size_t i, j, k, nj, nh;
+|
+|  if (gc->nitems == 0) { return; }
+|
+@@ -205,13 +205,13 @@
+|  gc->frees = realloc(gc->frees, sizeof(tgc_ptr_t) * gc->nfrees);
+|  if (gc->frees == NULL) { return; }
+|
+-  i = 0;
++  i = 0; k = 0;
+|  while (i < gc->nslots) {
+|    if (gc->items[i].hash ==        0) { i++; continue; }
+|    if (gc->items[i].flags & TGC_MARK) { i++; continue; }
+|    if (gc->items[i].flags & TGC_ROOT) { i++; continue; }
+|
+-    free(gc->items[i].ptr);
++    gc->frees[k] = gc->items[i]; k++;
+|    memset(&gc->items[i], 0, sizeof(tgc_ptr_t));
+|
+|    j = i;
+
+~~~
+
+sweep-free-frees
+
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -236,6 +236,11 @@
+|  tgc_resize_less(gc);
+|
+|  gc->mitems = gc->nitems + (size_t)(gc->nitems * gc->sweepfactor) + 1;
++
++  for (i = 0; i < gc->nfrees; i++) {
++    if (gc->frees[i].dtor) { gc->frees[i].dtor(gc->frees[i].ptr); }
++    free(gc->frees[i].ptr);
++  }
+|}
+|
+|/*** gc control ***/
+
+~~~
+
+sweep-cleanup-frees
+
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -241,6 +241,10 @@
+|    if (gc->frees[i].dtor) { gc->frees[i].dtor(gc->frees[i].ptr); }
+|    free(gc->frees[i].ptr);
+|  }
++
++  free(gc->frees);
++  gc->frees = NULL;
++  gc->nfrees = 0;
+|}
+|
+|/*** gc control ***/
+
+~~~
+
+calloc-prototypes
+
+diff --git a/tgc.h b/tgc.h
+--- a/tgc.h
++++ b/tgc.h
+@@ -35,8 +35,11 @@
+|void tgc_run(tgc_t *gc);
+|
+|void *tgc_alloc(tgc_t *gc, size_t size);
++void *tgc_calloc(tgc_t *gc, size_t num, size_t size);
+|
+|void *tgc_alloc_opt(tgc_t *gc, size_t size, int flags, void(*dtor)(void*));
++void *tgc_calloc_opt(tgc_t *gc, size_t num, size_t size, int flags,
++                     void(*dtor)(void*));
+|
+|int tgc_get_flags(tgc_t *gc, void *ptr);
+|int tgc_set_flags(tgc_t *gc, void *ptr, int flags);
+
+~~~
+
+calloc-opt
+
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -320,6 +320,17 @@
+|  return ptr;
+|}
+|
++void *tgc_calloc_opt(
++  tgc_t *gc, size_t num, size_t size,
++  int flags, void(*dtor)(void*)
++) {
++  void *ptr = calloc(num, size);
++  if (ptr != NULL) {
++    ptr = tgc_add(gc, ptr, num * size, flags, dtor);
++  }
++  return ptr;
++}
++
+|/*** getters and setters ***/
+|
+|int tgc_get_flags(tgc_t *gc, void *ptr) {
+
+~~~
+
+calloc
+
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -312,6 +312,10 @@
+|  return tgc_alloc_opt(gc, size, 0, NULL);
+|}
+|
++void *tgc_calloc(tgc_t *gc, size_t num, size_t size) {
++  return tgc_calloc_opt(gc, num, size, 0, NULL);
++}
++
+|void *tgc_alloc_opt(tgc_t *gc, size_t size, int flags, void(*dtor)(void*)) {
+|  void *ptr = malloc(size);
+|  if (ptr != NULL) {
+
+~~~
+
+realloc-prototype
+
+diff --git a/tgc.h b/tgc.h
+--- a/tgc.h
++++ b/tgc.h
+@@ -36,6 +36,7 @@
+|
+|void *tgc_alloc(tgc_t *gc, size_t size);
+|void *tgc_calloc(tgc_t *gc, size_t num, size_t size);
++void *tgc_realloc(tgc_t *gc, void *ptr, size_t size);
+|
+|void *tgc_alloc_opt(tgc_t *gc, size_t size, int flags, void(*dtor)(void*));
+|void *tgc_calloc_opt(tgc_t *gc, size_t num, size_t size, int flags,
+
+~~~
+
+realloc
+
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -316,6 +316,28 @@
+|  return tgc_calloc_opt(gc, num, size, 0, NULL);
+|}
+|
++void *tgc_realloc(tgc_t *gc, void *ptr, size_t size) {
++  tgc_ptr_t *p;
++  void *qtr = realloc(ptr, size);
++
++  p = tgc_get_ptr(gc, ptr);
++
++  if (p && qtr == ptr) {
++    p->size = size;
++    return qtr;
++  }
++
++  if (p && qtr != ptr) {
++    int flags = p->flags;
++    void(*dtor)(void*) = p->dtor;
++    tgc_rem(gc, ptr);
++    tgc_add(gc, qtr, size, flags, dtor);
++    return qtr;
++  }
++
++  return NULL;
++}
++
+|void *tgc_alloc_opt(tgc_t *gc, size_t size, int flags, void(*dtor)(void*)) {
+|  void *ptr = malloc(size);
+|  if (ptr != NULL) {
+
+~~~
+
+rem
+
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -308,6 +308,12 @@
+|  }
+|}
+|
++static void tgc_rem(tgc_t *gc, void *ptr) {
++  tgc_rem_ptr(gc, ptr);
++  tgc_resize_less(gc);
++  gc->mitems = gc->nitems + (size_t)(gc->nitems * gc->sweepfactor) + 1;
++}
++
+|void *tgc_alloc(tgc_t *gc, size_t size) {
+|  return tgc_alloc_opt(gc, size, 0, NULL);
+|}
+
+~~~
+
+rem-ptr
+
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -54,6 +54,25 @@
+|  }
+|}
+|
++static void tgc_rem_ptr(tgc_t *gc, void *ptr) {
++  size_t i, j, h;
++
++  if (gc->nitems == 0) { return; }
++
++  i = tgc_hash(ptr) % gc->nslots; j = 0;
++
++  while (1) {
++    h = gc->items[i].hash;
++    if (h == 0 || j > tgc_probe(gc, i, h)) { return; }
++    if (gc->items[i].ptr == ptr) {
++      memset(&gc->items[i], 0, sizeof(tgc_ptr_t));
++      gc->nitems--;
++      return;
++    }
++    i = (i+1) % gc->nslots; j++;
++  }
++}
++
+|/*** resize pointer table ***/
+|
+|enum {
+
+~~~
+
+rem-ptr-linear-probing-invariant
+
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -55,7 +55,7 @@
+|}
+|
+|static void tgc_rem_ptr(tgc_t *gc, void *ptr) {
+-  size_t i, j, h;
++  size_t i, j, h, nj, nh;
+|
+|  if (gc->nitems == 0) { return; }
+|
+@@ -66,6 +66,18 @@
+|    if (h == 0 || j > tgc_probe(gc, i, h)) { return; }
+|    if (gc->items[i].ptr == ptr) {
+|      memset(&gc->items[i], 0, sizeof(tgc_ptr_t));
++      j = i;
++      while (1) {
++        nj = (j+1) % gc->nslots;
++        nh = gc->items[nj].hash;
++        if (nh != 0 && tgc_probe(gc, nj, nh) > 0) {
++          memcpy(&gc->items[ j], &gc->items[nj], sizeof(tgc_ptr_t));
++          memset(&gc->items[nj],              0, sizeof(tgc_ptr_t));
++          j = nj;
++        } else {
++          break;
++        }
++      }
+|      gc->nitems--;
+|      return;
+|    }
+
+~~~
+
+realloc-handle-realloc-failure
+
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -357,6 +357,11 @@
+|  tgc_ptr_t *p;
+|  void *qtr = realloc(ptr, size);
+|
++  if (qtr == NULL) {
++    tgc_rem(gc, ptr);
++    return qtr;
++  }
++
+|  p = tgc_get_ptr(gc, ptr);
+|
+|  if (p && qtr == ptr) {
+
+~~~
+
+realloc-handle-null
+
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -362,6 +362,11 @@
+|    return qtr;
+|  }
+|
++  if (ptr == NULL) {
++    tgc_add(gc, qtr, size, 0, NULL);
++    return qtr;
++  }
++
+|  p = tgc_get_ptr(gc, ptr);
+|
+|  if (p && qtr == ptr) {
+
+~~~
+
+free-prototype
+
+diff --git a/tgc.h b/tgc.h
+--- a/tgc.h
++++ b/tgc.h
+@@ -37,6 +37,7 @@
+|void *tgc_alloc(tgc_t *gc, size_t size);
+|void *tgc_calloc(tgc_t *gc, size_t num, size_t size);
+|void *tgc_realloc(tgc_t *gc, void *ptr, size_t size);
++void tgc_free(tgc_t *gc, void *ptr);
+|
+|void *tgc_alloc_opt(tgc_t *gc, size_t size, int flags, void(*dtor)(void*));
+|void *tgc_calloc_opt(tgc_t *gc, size_t num, size_t size, int flags,
+
+~~~
+
+free
+
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -385,6 +385,17 @@
+|  return NULL;
+|}
+|
++void tgc_free(tgc_t *gc, void *ptr) {
++  tgc_ptr_t *p = tgc_get_ptr(gc, ptr);
++  if (p) {
++    if (p->dtor) {
++      p->dtor(ptr);
++    }
++    free(ptr);
++    tgc_rem(gc, ptr);
++  }
++}
++
+|void *tgc_alloc_opt(tgc_t *gc, size_t size, int flags, void(*dtor)(void*)) {
+|  void *ptr = malloc(size);
+|  if (ptr != NULL) {
+
+~~~
+
+rem-ptr-frees-null
+
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -59,6 +59,10 @@
+|
+|  if (gc->nitems == 0) { return; }
+|
++  for (i = 0; i < gc->nfrees; i++) {
++    if (gc->frees[i].ptr == ptr) { gc->frees[i].ptr = NULL; }
++  }
++
+|  i = tgc_hash(ptr) % gc->nslots; j = 0;
+|
+|  while (1) {
+
+~~~
+
+sweep-check-frees-for-null
+
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -273,8 +273,10 @@
+|  gc->mitems = gc->nitems + (size_t)(gc->nitems * gc->sweepfactor) + 1;
+|
+|  for (i = 0; i < gc->nfrees; i++) {
+-    if (gc->frees[i].dtor) { gc->frees[i].dtor(gc->frees[i].ptr); }
+-    free(gc->frees[i].ptr);
++    if (gc->frees[i].ptr) {
++      if (gc->frees[i].dtor) { gc->frees[i].dtor(gc->frees[i].ptr); }
++      free(gc->frees[i].ptr);
++    }
+|  }
+|
+|  free(gc->frees);

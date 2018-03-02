@@ -1,0 +1,453 @@
+# Mark
+
+~~~
+
+add-mark
+
+diff --git a/tgc.h b/tgc.h
+--- a/tgc.h
++++ b/tgc.h
+@@ -6,6 +6,7 @@
+|
+|typedef struct {
+|  void *ptr;
++  int mark;
+|} tgc_ptr_t;
+|
+|typedef struct {
+
+~~~
+
+set-mark
+
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -7,6 +7,7 @@
+|  size_t i;
+|
+|  item.ptr = ptr;
++  item.mark = 0;
+|
+|  for (i = 0; i < gc->nslots; i++) {
+|    if (gc->items[i].ptr == NULL) {
+
+~~~
+
+mark-ptr
+
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -44,6 +44,17 @@
+|
+|/*** mark and sweep ***/
+|
++static void tgc_mark_ptr(tgc_t *gc, void *ptr) {
++  size_t i;
++
++  for (i = 0; i < gc->nslots; i++) {
++    if (ptr == gc->items[i].ptr) {
++      gc->items[i].mark = 1;
++      return;
++    }
++  }
++}
++
+|static void tgc_sweep(tgc_t *gc) {
+|  size_t i;
+|
+
+~~~
+
+add-bottom
+
+diff --git a/tgc.h b/tgc.h
+--- a/tgc.h
++++ b/tgc.h
+@@ -10,6 +10,7 @@
+|} tgc_ptr_t;
+|
+|typedef struct {
++  void *bottom;
+|  tgc_ptr_t *items;
+|  size_t nitems, nslots;
+|} tgc_t;
+
+~~~
+
+start-stk
+
+diff --git a/tgc.h b/tgc.h
+--- a/tgc.h
++++ b/tgc.h
+@@ -15,7 +15,7 @@
+|  size_t nitems, nslots;
+|} tgc_t;
+|
+-void tgc_start(tgc_t *gc);
++void tgc_start(tgc_t *gc, void *stk);
+|void tgc_stop(tgc_t *gc);
+|
+|void *tgc_alloc(tgc_t *gc, size_t size);
+
+~~~
+
+set-bottom
+
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -70,7 +70,8 @@
+|
+|/*** gc control ***/
+|
+-void tgc_start(tgc_t *gc) {
++void tgc_start(tgc_t *gc, void *stk) {
++  gc->bottom = stk;
+|  gc->nitems = 0;
+|  gc->nslots = 0;
+|  gc->items = NULL;
+
+~~~
+
+mark-stack
+
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -55,6 +55,15 @@
+|  }
+|}
+|
++static void tgc_mark_stack(tgc_t *gc) {
++  void *stk, *bot, *top, *p;
++  bot = gc->bottom; top = &stk;
++
++  for (p = top; p <= bot; p = ((char*)p) + sizeof(void*)) {
++    tgc_mark_ptr(gc, *((void**)p));
++  }
++}
++
+|static void tgc_sweep(tgc_t *gc) {
+|  size_t i;
+|
+
+~~~
+
+mark-stack-handle-both-directions
+
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -59,8 +59,16 @@
+|  void *stk, *bot, *top, *p;
+|  bot = gc->bottom; top = &stk;
+|
+-  for (p = top; p <= bot; p = ((char*)p) + sizeof(void*)) {
+-    tgc_mark_ptr(gc, *((void**)p));
++  if (bot < top) {
++    for (p = top; p >= bot; p = ((char*)p) - sizeof(void*)) {
++      tgc_mark_ptr(gc, *((void**)p));
++    }
++  }
++
++  if (bot > top) {
++    for (p = top; p <= bot; p = ((char*)p) + sizeof(void*)) {
++      tgc_mark_ptr(gc, *((void**)p));
++    }
+|  }
+|}
+|
+
+~~~
+
+mark
+
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -72,6 +72,10 @@
+|  }
+|}
+|
++static void tgc_mark(tgc_t *gc) {
++  tgc_mark_stack(gc);
++}
++
+|static void tgc_sweep(tgc_t *gc) {
+|  size_t i;
+|
+
+~~~
+
+mark-return-early
+
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -73,6 +73,8 @@
+|}
+|
+|static void tgc_mark(tgc_t *gc) {
++  if (gc->nitems == 0) { return; }
++
+|  tgc_mark_stack(gc);
+|}
+|
+
+~~~
+
+mark-volatile
+
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -73,9 +73,11 @@
+|}
+|
+|static void tgc_mark(tgc_t *gc) {
++  void (*volatile mark_stack)(tgc_t*) = tgc_mark_stack;
++
+|  if (gc->nitems == 0) { return; }
+|
+-  tgc_mark_stack(gc);
++  mark_stack(gc);
+|}
+|
+|static void tgc_sweep(tgc_t *gc) {
+
+~~~
+
+add-size
+
+diff --git a/tgc.h b/tgc.h
+--- a/tgc.h
++++ b/tgc.h
+@@ -7,6 +7,7 @@
+|typedef struct {
+|  void *ptr;
+|  int mark;
++  size_t size;
+|} tgc_ptr_t;
+|
+|typedef struct {
+
+~~~
+
+add-ptr-size
+
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -2,12 +2,13 @@
+|
+|/*** pointer table operations ***/
+|
+-static void tgc_add_ptr(tgc_t *gc, void *ptr) {
++static void tgc_add_ptr(tgc_t *gc, void *ptr, size_t size) {
+|  tgc_ptr_t item;
+|  size_t i;
+|
+|  item.ptr = ptr;
+|  item.mark = 0;
++  item.size = size;
+|
+|  for (i = 0; i < gc->nslots; i++) {
+|    if (gc->items[i].ptr == NULL) {
+
+~~~
+
+add-pass-size
+
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -110,11 +110,11 @@
+|
+|/*** allocator functions ***/
+|
+-static void *tgc_add(tgc_t *gc, void *ptr) {
++static void *tgc_add(tgc_t *gc, void *ptr, size_t size) {
+|  gc->nitems++;
+|
+|  if (tgc_resize(gc)) {
+-    tgc_add_ptr(gc, ptr);
++    tgc_add_ptr(gc, ptr, size);
+|    return ptr;
+|  } else {
+|    gc->nitems--;
+
+~~~
+
+alloc-pass-size
+
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -126,7 +126,7 @@
+|void *tgc_alloc(tgc_t *gc, size_t size) {
+|  void *ptr = malloc(size);
+|  if (ptr != NULL) {
+-    ptr = tgc_add(gc, ptr);
++    ptr = tgc_add(gc, ptr, size);
+|  }
+|  return ptr;
+|}
+
+~~~
+
+mark-heap
+
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -46,11 +46,14 @@
+|/*** mark and sweep ***/
+|
+|static void tgc_mark_ptr(tgc_t *gc, void *ptr) {
+-  size_t i;
++  size_t i, k;
+|
+|  for (i = 0; i < gc->nslots; i++) {
+|    if (ptr == gc->items[i].ptr) {
+|      gc->items[i].mark = 1;
++      for (k = 0; k < gc->items[i].size/sizeof(void*); k++) {
++        tgc_mark_ptr(gc, ((void**)gc->items[i].ptr)[k]);
++      }
+|      return;
+|    }
+|  }
+
+~~~
+
+mark-ptr-avoid-infinite-recursion
+
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -50,6 +50,7 @@
+|
+|  for (i = 0; i < gc->nslots; i++) {
+|    if (ptr == gc->items[i].ptr) {
++      if (gc->items[i].mark) { return; }
+|      gc->items[i].mark = 1;
+|      for (k = 0; k < gc->items[i].size/sizeof(void*); k++) {
+|        tgc_mark_ptr(gc, ((void**)gc->items[i].ptr)[k]);
+
+~~~
+
+mark-registers
+
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -78,10 +78,14 @@
+|}
+|
+|static void tgc_mark(tgc_t *gc) {
++  jmp_buf env;
++
+|  void (*volatile mark_stack)(tgc_t*) = tgc_mark_stack;
+|
+|  if (gc->nitems == 0) { return; }
+|
++  memset(&env, 0, sizeof(jmp_buf));
++  setjmp(env);
+|  mark_stack(gc);
+|}
+|
+
+~~~
+
+include-setjmp
+
+diff --git a/tgc.h b/tgc.h
+--- a/tgc.h
++++ b/tgc.h
+@@ -1,6 +1,7 @@
+|#ifndef TGC_H
+|#define TGC_H
+|
++#include <setjmp.h>
+|#include <stdlib.h>
+|#include <string.h>
+|
+
+~~~
+
+add-minptr-maxptr
+
+diff --git a/tgc.h b/tgc.h
+--- a/tgc.h
++++ b/tgc.h
+@@ -2,6 +2,7 @@
+|#define TGC_H
+|
+|#include <setjmp.h>
++#include <stdint.h>
+|#include <stdlib.h>
+|#include <string.h>
+|
+@@ -13,6 +14,7 @@
+|
+|typedef struct {
+|  void *bottom;
++  uintptr_t minptr, maxptr;
+|  tgc_ptr_t *items;
+|  size_t nitems, nslots;
+|} tgc_t;
+
+~~~
+
+init-minptr-maxptr
+
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -109,6 +109,8 @@
+|  gc->nitems = 0;
+|  gc->nslots = 0;
+|  gc->items = NULL;
++  gc->minptr = UINTPTR_MAX;
++  gc->maxptr = 0;
+|}
+|
+|void tgc_stop(tgc_t *gc) {
+
+~~~
+
+set-minptr-maxptr
+
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -122,6 +122,10 @@
+|
+|static void *tgc_add(tgc_t *gc, void *ptr, size_t size) {
+|  gc->nitems++;
++  gc->maxptr = ((uintptr_t)ptr) + size > gc->maxptr ?
++    ((uintptr_t)ptr) + size : gc->maxptr;
++  gc->minptr = ((uintptr_t)ptr)        < gc->minptr ?
++    ((uintptr_t)ptr)        : gc->minptr;
+|
+|  if (tgc_resize(gc)) {
+|    tgc_add_ptr(gc, ptr, size);
+
+~~~
+
+use-minptr-maxptr
+
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -48,6 +48,9 @@
+|static void tgc_mark_ptr(tgc_t *gc, void *ptr) {
+|  size_t i, k;
+|
++  if ((uintptr_t)ptr < gc->minptr
++  ||  (uintptr_t)ptr > gc->maxptr) { return; }
++
+|  for (i = 0; i < gc->nslots; i++) {
+|    if (ptr == gc->items[i].ptr) {
+|      if (gc->items[i].mark) { return; }

@@ -57,4 +57,3 @@ to install the command line developer tools. You can also run
 
 In Ubuntu, it's `sudo apt-get install gcc make`. Other distributions should
 have `gcc` and `make` packages available as well.
-

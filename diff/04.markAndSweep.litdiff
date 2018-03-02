@@ -1,0 +1,295 @@
+# Mark and Sweep
+
+~~~
+
+sweep-unmarked
+
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -99,6 +99,7 @@
+|
+|  for (i = 0; i < gc->nslots; i++) {
+|    if (gc->items[i].ptr == NULL) { continue; }
++    if (gc->items[i].mark)        { continue; }
+|    free(gc->items[i].ptr);
+|    memset(&gc->items[i], 0, sizeof(tgc_ptr_t));
+|    gc->nitems--;
+
+~~~
+
+sweep-reset-mark
+
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -104,6 +104,10 @@
+|    memset(&gc->items[i], 0, sizeof(tgc_ptr_t));
+|    gc->nitems--;
+|  }
++
++  for (i = 0; i < gc->nslots; i++) {
++    gc->items[i].mark = 0;
++  }
+|}
+|
+|/*** gc control ***/
+
+~~~
+
+run-prototype
+
+diff --git a/tgc.h b/tgc.h
+--- a/tgc.h
++++ b/tgc.h
+@@ -21,6 +21,7 @@
+|
+|void tgc_start(tgc_t *gc, void *stk);
+|void tgc_stop(tgc_t *gc);
++void tgc_run(tgc_t *gc);
+|
+|void *tgc_alloc(tgc_t *gc, size_t size);
+|
+
+~~~
+
+run
+
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -126,6 +126,11 @@
+|  free(gc->items);
+|}
+|
++void tgc_run(tgc_t *gc) {
++  tgc_mark(gc);
++  tgc_sweep(gc);
++}
++
+|/*** allocator functions ***/
+|
+|static void *tgc_add(tgc_t *gc, void *ptr, size_t size) {
+
+~~~
+
+collect-on-alloc
+
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -142,6 +142,7 @@
+|
+|  if (tgc_resize(gc)) {
+|    tgc_add_ptr(gc, ptr, size);
++    tgc_run(gc);
+|    return ptr;
+|  } else {
+|    gc->nitems--;
+
+~~~
+
+add-mitems
+
+diff --git a/tgc.h b/tgc.h
+--- a/tgc.h
++++ b/tgc.h
+@@ -16,7 +16,7 @@
+|  void *bottom;
+|  uintptr_t minptr, maxptr;
+|  tgc_ptr_t *items;
+-  size_t nitems, nslots;
++  size_t nitems, nslots, mitems;
+|} tgc_t;
+|
+|void tgc_start(tgc_t *gc, void *stk);
+
+~~~
+
+init-mitems
+
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -116,6 +116,7 @@
+|  gc->bottom = stk;
+|  gc->nitems = 0;
+|  gc->nslots = 0;
++  gc->mitems = 0;
+|  gc->items = NULL;
+|  gc->minptr = UINTPTR_MAX;
+|  gc->maxptr = 0;
+
+~~~
+
+set-mitems
+
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -108,6 +108,8 @@
+|  for (i = 0; i < gc->nslots; i++) {
+|    gc->items[i].mark = 0;
+|  }
++
++  gc->mitems = gc->nitems + (gc->nitems / 2) + 1;
+|}
+|
+|/*** gc control ***/
+
+~~~
+
+use-mitems
+
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -145,7 +145,9 @@
+|
+|  if (tgc_resize(gc)) {
+|    tgc_add_ptr(gc, ptr, size);
+-    tgc_run(gc);
++    if (gc->nitems > gc->mitems) {
++      tgc_run(gc);
++    }
+|    return ptr;
+|  } else {
+|    gc->nitems--;
+
+~~~
+
+add-sweepfactor
+
+diff --git a/tgc.h b/tgc.h
+--- a/tgc.h
++++ b/tgc.h
+@@ -16,6 +16,7 @@
+|  void *bottom;
+|  uintptr_t minptr, maxptr;
+|  tgc_ptr_t *items;
++  double sweepfactor;
+|  size_t nitems, nslots, mitems;
+|} tgc_t;
+|
+
+~~~
+
+set-sweepfactor
+
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -122,6 +122,7 @@
+|  gc->items = NULL;
+|  gc->minptr = UINTPTR_MAX;
+|  gc->maxptr = 0;
++  gc->sweepfactor = 0.5;
+|}
+|
+|void tgc_stop(tgc_t *gc) {
+
+~~~
+
+use-sweepfactor
+
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -109,7 +109,7 @@
+|    gc->items[i].mark = 0;
+|  }
+|
+-  gc->mitems = gc->nitems + (gc->nitems / 2) + 1;
++  gc->mitems = gc->nitems + (size_t)(gc->nitems * gc->sweepfactor) + 1;
+|}
+|
+|/*** gc control ***/
+
+~~~
+
+add-paused
+
+diff --git a/tgc.h b/tgc.h
+--- a/tgc.h
++++ b/tgc.h
+@@ -14,6 +14,7 @@
+|
+|typedef struct {
+|  void *bottom;
++  int paused;
+|  uintptr_t minptr, maxptr;
+|  tgc_ptr_t *items;
+|  double sweepfactor;
+
+~~~
+
+init-paused
+
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -116,6 +116,7 @@
+|
+|void tgc_start(tgc_t *gc, void *stk) {
+|  gc->bottom = stk;
++  gc->paused = 0;
+|  gc->nitems = 0;
+|  gc->nslots = 0;
+|  gc->mitems = 0;
+
+~~~
+
+use-paused
+
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -147,7 +147,7 @@
+|
+|  if (tgc_resize(gc)) {
+|    tgc_add_ptr(gc, ptr, size);
+-    if (gc->nitems > gc->mitems) {
++    if (!gc->paused && gc->nitems > gc->mitems) {
+|      tgc_run(gc);
+|    }
+|    return ptr;
+
+~~~
+
+pause-resume-prototypes
+
+diff --git a/tgc.h b/tgc.h
+--- a/tgc.h
++++ b/tgc.h
+@@ -23,6 +23,8 @@
+|
+|void tgc_start(tgc_t *gc, void *stk);
+|void tgc_stop(tgc_t *gc);
++void tgc_pause(tgc_t *gc);
++void tgc_resume(tgc_t *gc);
+|void tgc_run(tgc_t *gc);
+|
+|void *tgc_alloc(tgc_t *gc, size_t size);
+
+~~~
+
+pause-resume
+
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -131,6 +131,14 @@
+|  free(gc->items);
+|}
+|
++void tgc_pause(tgc_t *gc) {
++  gc->paused = 1;
++}
++
++void tgc_resume(tgc_t *gc) {
++  gc->paused = 0;
++}
++
+|void tgc_run(tgc_t *gc) {
+|  tgc_mark(gc);
+|  tgc_sweep(gc);
