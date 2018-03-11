@@ -1,8 +1,17 @@
----
-:name: tgc
-:version: "1.0.0beta0"
-:title: Build Your Own Garbage Collector
-:repo_author:
-  :name: snaptoken
-  :email: snaptoken@viewsourcecode.org
-...
+name: tgc
+version: "1.0.0beta0"
+title: Build Your Own Garbage Collector
+repo_author:
+  name: snaptoken
+  email: snaptoken@viewsourcecode.org
+diff_transformers:
+  - FoldSections:
+      section_types:
+        - name: comments
+          start: "^/\\*\\*\\*.+\\*\\*\\*/$"
+          end: null
+        - name: braces
+          start: "^\\S.*{$"
+          end: "^}( \\w+)?;?$"
+  - TrimBlankLines
+  - OmitAdjacentRemovals
