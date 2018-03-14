@@ -26,13 +26,17 @@ add-ptr-use-hash
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
-@@ -14,12 +14,15 @@
+@@ -10,16 +10,19 @@
+|  tgc_ptr_t item;
+|  size_t i;
+|
++  i = tgc_hash(ptr) % gc->nslots;
++
+|  item.ptr = ptr;
 |  item.mark = 0;
 |  item.size = size;
 |
 -  for (i = 0; i < gc->nslots; i++) {
-+  i = tgc_hash(ptr) % gc->nslots;
-+
 +  while (1) {
 |    if (gc->items[i].ptr == NULL) {
 |      gc->items[i] = item;
@@ -384,8 +388,8 @@ diff --git a/tgc.c b/tgc.c
 +    j = i;
 +    while (1) {
 +      nj = (j+1) % gc->nslots;
-+      nh = tgc_hash(gc->items[nj].ptr);
-+      if (gc->items[nj].ptr != NULL && nh != i) {
++      nh = tgc_hash(gc->items[nj].ptr) % gc->nitems;
++      if (gc->items[nj].ptr != NULL && nh != nj) {
 +        memcpy(&gc->items[ j], &gc->items[nj], sizeof(tgc_ptr_t));
 +        memset(&gc->items[nj],              0, sizeof(tgc_ptr_t));
 +        j = nj;
@@ -438,14 +442,14 @@ set-hash
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
-@@ -13,6 +13,7 @@
+@@ -15,6 +15,7 @@
 |  item.ptr = ptr;
 |  item.mark = 0;
 |  item.size = size;
 +  item.hash = i+1;
 |
-|  i = tgc_hash(ptr) % gc->nslots;
-|
+|  while (1) {
+|    if (gc->items[i].ptr == NULL) {
 
 ~~~
 
@@ -461,10 +465,10 @@ diff --git a/tgc.c b/tgc.c
 -  size_t i;
 +  size_t i, h;
 |
-|  item.ptr = ptr;
-|  item.mark = 0;
-@@ -18,10 +18,8 @@
 |  i = tgc_hash(ptr) % gc->nslots;
+|
+@@ -18,10 +18,8 @@
+|  item.hash = i+1;
 |
 |  while (1) {
 -    if (gc->items[i].ptr == NULL) {
@@ -543,10 +547,10 @@ diff --git a/tgc.c b/tgc.c
 |    j = i;
 |    while (1) {
 |      nj = (j+1) % gc->nslots;
--      nh = tgc_hash(gc->items[nj].ptr);
--      if (gc->items[nj].ptr != NULL && nh != i) {
+-      nh = tgc_hash(gc->items[nj].ptr) % gc->nitems;
+-      if (gc->items[nj].ptr != NULL && nh != nj) {
 +      nh = gc->items[nj].hash;
-+      if (nh != 0 && nh-1 != i) {
++      if (nh != 0 && nh-1 != nj) {
 |        memcpy(&gc->items[ j], &gc->items[nj], sizeof(tgc_ptr_t));
 |        memset(&gc->items[nj],              0, sizeof(tgc_ptr_t));
 |        j = nj;
@@ -574,27 +578,41 @@ diff --git a/tgc.c b/tgc.c
 
 ~~~
 
+sweep-robin-hood
+
+diff --git a/tgc.c b/tgc.c
+--- a/tgc.c
++++ b/tgc.c
+@@ -167,7 +167,7 @@
+|    while (1) {
+|      nj = (j+1) % gc->nslots;
+|      nh = gc->items[nj].hash;
+-      if (nh != 0 && nh-1 != nj) {
++      if (nh != 0 && tgc_probe(gc, nj, nh) > 0) {
+|        memcpy(&gc->items[ j], &gc->items[nj], sizeof(tgc_ptr_t));
+|        memset(&gc->items[nj],              0, sizeof(tgc_ptr_t));
+|        j = nj;
+
+~~~
+
 add-ptr-count-iterations
 
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
-@@ -14,20 +14,20 @@
+@@ -14,9 +14,9 @@
 |
 |static void tgc_add_ptr(tgc_t *gc, void *ptr, size_t size) {
 |  tgc_ptr_t item;
 -  size_t i, h;
 +  size_t i, j, h;
 |
-|  item.ptr = ptr;
-|  item.mark = 0;
-|  item.size = size;
-|  item.hash = i+1;
-|
 -  i = tgc_hash(ptr) % gc->nslots;
 +  i = tgc_hash(ptr) % gc->nslots; j = 0;
 |
-|  while (1) {
+|  item.ptr = ptr;
+|  item.mark = 0;
+@@ -27,7 +27,7 @@
 |    h = gc->items[i].hash;
 |    if (h == 0) { gc->items[i] = item; return; }
 |    if (gc->items[i].ptr == item.ptr) { return; }
@@ -618,8 +636,8 @@ diff --git a/tgc.c b/tgc.c
 -  size_t i, j, h;
 +  size_t i, j, h, p;
 |
-|  item.ptr = ptr;
-|  item.mark = 0;
+|  i = tgc_hash(ptr) % gc->nslots; j = 0;
+|
 @@ -27,6 +27,7 @@
 |    h = gc->items[i].hash;
 |    if (h == 0) { gc->items[i] = item; return; }
@@ -644,7 +662,7 @@ diff --git a/tgc.c b/tgc.c
 +  tgc_ptr_t item, tmp;
 |  size_t i, j, h, p;
 |
-|  item.ptr = ptr;
+|  i = tgc_hash(ptr) % gc->nslots; j = 0;
 @@ -28,6 +28,12 @@
 |    if (h == 0) { gc->items[i] = item; return; }
 |    if (gc->items[i].ptr == item.ptr) { return; }
@@ -675,20 +693,3 @@ diff --git a/tgc.c b/tgc.c
 |    if (ptr == gc->items[i].ptr) {
 |      if (gc->items[i].mark) { return; }
 |      gc->items[i].mark = 1;
-
-~~~
-
-sweep-robin-hood
-
-diff --git a/tgc.c b/tgc.c
---- a/tgc.c
-+++ b/tgc.c
-@@ -174,7 +174,7 @@
-|    while (1) {
-|      nj = (j+1) % gc->nslots;
-|      nh = gc->items[nj].hash;
--      if (nh != 0 && nh-1 != i) {
-+      if (nh != 0 && tgc_probe(gc, nj, nh) > 0) {
-|        memcpy(&gc->items[ j], &gc->items[nj], sizeof(tgc_ptr_t));
-|        memset(&gc->items[nj],              0, sizeof(tgc_ptr_t));
-|        j = nj;
