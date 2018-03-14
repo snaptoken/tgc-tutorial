@@ -297,7 +297,7 @@ diff --git a/tgc.h b/tgc.h
 |void *tgc_alloc_opt(tgc_t *gc, size_t size, int flags);
 |
 +int tgc_get_flags(tgc_t *gc, void *ptr);
-+int tgc_set_flags(tgc_t *gc, void *ptr, int flags);
++void tgc_set_flags(tgc_t *gc, void *ptr, int flags);
 +
 |#endif
 
@@ -363,7 +363,7 @@ diff --git a/tgc.h b/tgc.h
 @@ -38,5 +38,6 @@
 |
 |int tgc_get_flags(tgc_t *gc, void *ptr);
-|int tgc_set_flags(tgc_t *gc, void *ptr, int flags);
+|void tgc_set_flags(tgc_t *gc, void *ptr, int flags);
 +size_t tgc_get_size(tgc_t *gc, void *ptr);
 |
 |#endif
@@ -467,7 +467,7 @@ diff --git a/tgc.h b/tgc.h
 +void *tgc_alloc_opt(tgc_t *gc, size_t size, int flags, void(*dtor)(void*));
 |
 |int tgc_get_flags(tgc_t *gc, void *ptr);
-|int tgc_set_flags(tgc_t *gc, void *ptr, int flags);
+|void tgc_set_flags(tgc_t *gc, void *ptr, int flags);
 
 ~~~
 
@@ -593,7 +593,7 @@ diff --git a/tgc.h b/tgc.h
 @@ -40,6 +40,8 @@
 |
 |int tgc_get_flags(tgc_t *gc, void *ptr);
-|int tgc_set_flags(tgc_t *gc, void *ptr, int flags);
+|void tgc_set_flags(tgc_t *gc, void *ptr, int flags);
 +void(*tgc_get_dtor(tgc_t *gc, void *ptr))(void*);
 +void tgc_set_dtor(tgc_t *gc, void *ptr, void(*dtor)(void*));
 |size_t tgc_get_size(tgc_t *gc, void *ptr);
@@ -811,7 +811,7 @@ diff --git a/tgc.h b/tgc.h
 +                     void(*dtor)(void*));
 |
 |int tgc_get_flags(tgc_t *gc, void *ptr);
-|int tgc_set_flags(tgc_t *gc, void *ptr, int flags);
+|void tgc_set_flags(tgc_t *gc, void *ptr, int flags);
 
 ~~~
 
