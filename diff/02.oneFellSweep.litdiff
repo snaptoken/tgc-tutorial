@@ -1,30 +1,27 @@
 # One Fell Sweep
 
-In this chapter, you will build an allocator function called `tgc_alloc()`. It
-has the same interface as the standard library's `malloc()`, except you don't
-need to call `free()` on the memory you allocate with it!
+The first thing we'll do is build a memory allocator function called
+`tgc_alloc()`. It simply wraps the standard library's `malloc()`, but also
+remembers each block of memory it allocates. All memory allocated by
+`tgc_alloc()` will then be freed at the end of the user's program in "one fell
+sweep" when they call `tgc_stop()`.
 
-However, it has a
-very bad garbage collection algorithm. The only time it frees up memory is when
-you call `tgc_stop()` at the end of your program. This function frees *all* the
-allocated memory at once.
-
-At this point, it's not much better than no garbage collection at all. But it
-lays the foundation for building a proper garbage collector in the rest of the
-booklet.
+It won't be a very useful garbage collector at this point, but it lays the
+foundation for writing a proper mark-and-sweep garbage collector in the rest of
+the tutorial.
 
 ## The allocator
 
-In this section, you will create the two source files `tgc.h` and `tgc.c`, and
-write the initial implementation of the main allocation function,
-`tgc_alloc()`.
+Our library will consist of two files: `tgc.h` and `tgc.c`. We'll start by
+defining `tgc_alloc()` as a wrapper around `malloc()`, and filling out a little
+bit of C boilerplate.
 
 ~~~
 
-Create `tgc.h`, and add a function prototype for `tgc_alloc()`
+Create `tgc.h` and add a function prototype for `tgc_alloc()`
 
-Just like `malloc()`, it takes the number of bytes to allocate and returns a
-pointer to the allocated memory.
+Like `malloc()`, it takes the number of bytes to allocate and returns a pointer
+to the allocated memory.
 
 diff --git a/tgc.h b/tgc.h
 new file mode 100644
@@ -50,8 +47,8 @@ diff --git a/tgc.h b/tgc.h
 Wrap the header file in an [#include guard](https://en.wikipedia.org/wiki/Include_guard)
 
 This is a standard practice in C that prevents users of the library from
-getting "that's already been defined" errors when they include the header file
-multiple times.
+getting errors saying "that's already been defined" when they include the
+header file multiple times.
 
 diff --git a/tgc.h b/tgc.h
 --- a/tgc.h
@@ -68,9 +65,7 @@ diff --git a/tgc.h b/tgc.h
 
 ~~~
 
-Create a new file named `tgc.c`, and implement `tgc_alloc()`
-
-For now it acts the same as `malloc()`.
+Create `tgc.c` and implement `tgc_alloc()` as a wrapper for `malloc()`
 
 diff --git a/tgc.c b/tgc.c
 new file mode 100644
@@ -100,9 +95,9 @@ diff --git a/tgc.c b/tgc.c
 
 Add an "allocator functions" section
 
-`tgc.c` is going to end up growing very large. To help find our way around it,
-we're going to add special comments that denote different sections in the file.
-Here, we're putting `tgc_alloc()` under the "allocator functions" section.
+`tgc.c` is going to end up growing to several hundred lines of code. To help
+find our way around it, we're going to add special comments that divide it into
+small sections.
 
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
@@ -121,15 +116,16 @@ diff --git a/tgc.c b/tgc.c
 ## Pointer table
 
 We need to keep track of each piece of memory we allocate, so that we can
-garbage collect it (free it) later. We will save each allocated pointer to a
-pointer table, which for now will be a simple array of structs.
+garbage collect it (free it) later. The `tgc_ptr_t` struct will store all the
+information we need about an allocated pointer. The `tgc_t` struct will store
+the global state for our garbage collector, including the array of `tgc_ptr_t`
+structs.
 
 ~~~
 
 Add the `tgc_ptr_t` struct
 
-This will keep track of all the metadata we need to remember about each pointer
-we allocate. For now all we need to store is the pointer itself.
+For now all we need to store in the struct is the pointer itself.
 
 diff --git a/tgc.h b/tgc.h
 --- a/tgc.h
@@ -148,14 +144,12 @@ diff --git a/tgc.h b/tgc.h
 
 ~~~
 
-Let's create an array to hold the metadata for each block of allocated memory.
-In other words, an array of `tgc_ptr_t` structs. We'll make it a dynamically
-allocated array, and keep it in a struct that will contain all the global state
-of our garbage collector.
-
-~~~
-
 Add the `tgc_t` struct
+
+`items` is a dynamically growing array. `nitems` is the number of slots in the
+array filled with `tgc_ptr_t` values, and `nslots` is the total number of slots
+available in the array. When `nitems` is equal to `nslots`, the array is full
+and we'll have to grow the array.
 
 diff --git a/tgc.h b/tgc.h
 --- a/tgc.h
@@ -175,15 +169,10 @@ diff --git a/tgc.h b/tgc.h
 
 ~~~
 
-`nitems` is the number of slots in the array filled with `tgc_ptr_t` values,
-and `nslots` is the total number of slots available in the array. When `nitems`
-is equal to `nslots`, the array is full and we'll have to grow the array.
+Add the function prototype for `tgc_start()`
 
-To initialize our global state struct, we'll have the user of our library call
-a function called `tgc_start()` at the beginning of their program. Here is the
-prototype.
-
-~~~
+The user of our library will call this function at the start of their program
+to initialize the global state struct.
 
 diff --git a/tgc.h b/tgc.h
 --- a/tgc.h
@@ -200,10 +189,7 @@ diff --git a/tgc.h b/tgc.h
 
 ~~~
 
-And here is the implementation. Put it in a new "gc control" (garbage
-collection control) section.
-
-~~~
+Implement `tgc_start()`, initializing an empty pointer table
 
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
@@ -225,16 +211,16 @@ diff --git a/tgc.c b/tgc.c
 
 ~~~
 
-It initializes `items` to be an empty array with no space allocated.
+## Adding pointers to the pointer table
 
 We're going to want to add each pointer we allocate to this array. To be able
 to do that, `tgc_alloc()` needs to take the global state struct as an argument.
 In fact, every public function of our library will have `tgc_t *gc` as its
 first argument.
 
-Let's add it to the function prototype first.
-
 ~~~
+
+Update function prototype for `tgc_alloc()` to take global state
 
 diff --git a/tgc.h b/tgc.h
 --- a/tgc.h
@@ -250,9 +236,7 @@ diff --git a/tgc.h b/tgc.h
 
 ~~~
 
-Now add it to the function definition.
-
-~~~
+Update function definition for `tgc_alloc()` to take global state
 
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
@@ -269,10 +253,7 @@ diff --git a/tgc.c b/tgc.c
 
 ~~~
 
-Alright, now let's work on adding each pointer we allocate to the `gc->items`
-array. Start by calling a nonexistent `tgc_add()` function.
-
-~~~
+Call non-existent `tgc_add()` function
 
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
@@ -287,11 +268,10 @@ diff --git a/tgc.c b/tgc.c
 
 ~~~
 
-We'll implement `tgc_add()` by calling two more nonexistent functions:
+Implement `tgc_add()` by calling two more non-existent functions
+
 `tgc_resize()` will ensure there is enough room in the array to add one more
 pointer, and `tgc_add_ptr()` will actually add it to the array.
-
-~~~
 
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
@@ -312,10 +292,18 @@ diff --git a/tgc.c b/tgc.c
 
 ~~~
 
-Write a simple `tgc_resize()` function in a new "resize pointer table" section.
-If the array is full, it will grow the array by doubling its size.
+## Growing the array
+
+`tgc_resize()`'s job is to ensure that the pointer table has enough slots to
+store `gc->nitems` pointers. If it doesn't, it will dynamically grow the table
+by allocating an array twice as big and copying over the data to the new array.
 
 ~~~
+
+Start implementing the `tgc_resize()` function
+
+`calloc()` sets all the bytes we're allocating to 0. This sets all our pointers
+to `NULL`, which means all slots are considered empty.
 
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
@@ -338,15 +326,7 @@ diff --git a/tgc.c b/tgc.c
 
 ~~~
 
-`calloc()` sets all the bytes we're allocating to 0. This sets all our pointers
-to `NULL`, which for us is a special value that means that slot in the array is
-considered empty.
-
-Let's copy the contents of the old array into the beginning of the new array
-we've allocated. This is safe because the array currently only ever grows, and
-never shrinks.
-
-~~~
+Copy the items in the old array to the new array
 
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
@@ -370,9 +350,7 @@ diff --git a/tgc.c b/tgc.c
 
 ~~~
 
-We need to include `<string.h>` to get `memcpy()`.
-
-~~~
+Include `<string.h>` to get `memcpy()`
 
 diff --git a/tgc.h b/tgc.h
 --- a/tgc.h
@@ -388,9 +366,7 @@ diff --git a/tgc.h b/tgc.h
 
 ~~~
 
-Don't forget to free the old array!
-
-~~~
+Free the old array
 
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
@@ -407,13 +383,17 @@ diff --git a/tgc.c b/tgc.c
 
 ~~~
 
-OK, that's it for `tgc_resize()`. Now we can implement the other nonexistent
-function we used earlier, `tgc_add_ptr()`. Thanks to `tgc_add()`, we can assume
-there is at least one empty slot in the array, so all we have to do is loop
-through the array, find that empty slot, and fill it with the pointer. This
-goes into a new "pointer table operations" section.
+## Actually adding to the pointer table
+
+Now we want to implement the other non-existent function we used earlier,
+`tgc_add_ptr()`. Because `tgc_add()` increments `gc->nitems` and calls
+`tgc_resize()`, we can assume there is at least one empty slot in the array. So
+All we have to do is loop through the array, find that empty slot, and fill it
+with the pointer.
 
 ~~~
+
+Implement `tgc_add_ptr()`
 
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
@@ -443,12 +423,12 @@ diff --git a/tgc.c b/tgc.c
 
 ~~~
 
+Prevent re-adding a pointer
+
 ((Do we really need to do this check now? When would a pointer ever be
 double-added anyway? This won't work between the point where we start removing
 pointers from the array and the point where we actually start using it a hash
 table.))
-
-~~~
 
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
@@ -469,11 +449,17 @@ diff --git a/tgc.c b/tgc.c
 OK. Everything's now in place to keep track of pointers. Let's go back and do
 some error handling.
 
-If `malloc()` returns `NULL`, that means it failed due to being out of memory.
-In that case, we'll skip calling `tgc_add()` and just return the `NULL`
-pointer.
+Generally, the only errors we have to worry about in a garbage collector are
+out-of-memory errors. We can detect these errors by checking if `malloc` (or
+`calloc()`) returns `NULL`.
 
 ~~~
+
+Check if `malloc()` returned `NULL` in `tgc_alloc()`
+
+When `malloc()` returns `NULL`, we don't want to add anything to the pointer
+table. We just want to return `NULL` ourselves and let the user handle the
+out-of-memory error.
 
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
@@ -491,13 +477,9 @@ diff --git a/tgc.c b/tgc.c
 
 ~~~
 
-We also need to handle an out-of-memory `NULL` return value from `calloc()` in
-our `tgc_resize()` function. If it won't let us grow the array, we'll keep the
-old array and return `0` (false) to indicate that the resize failed and that
-the array might not have any empty spaces. We'll return `1` (true) on success.
-The return type of `tgc_resize()` will have to be changed from `void` to `int`.
+Handle out-of-memory error in `tgc_resize()`
 
-~~~
+Um, this step should really be split up.
 
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
@@ -534,13 +516,12 @@ diff --git a/tgc.c b/tgc.c
 
 ~~~
 
+Handle failure of `tgc_resize()` in `tgc_add()`
+
 Now we have to handle the `0` return value from `tgc_resize()` in `tgc_add()`.
 If `tgc_resize()` failed, then calling `tgc_add_ptr()` is unsafe because the
 array might be full. So in that case, we'll just free the allocated block of
-memory and return `NULL` to tell the allocation function that the allocation
-should has failed.
-
-~~~
+memory and return `NULL` to tell `tgc_alloc()` that it failed.
 
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
@@ -569,12 +550,12 @@ diff --git a/tgc.c b/tgc.c
 
 ~~~
 
-In `tgc_alloc()`, return the value that `tgc_add()` returns, so that if it
+Handle failure of `tgc_add()` in `tgc_alloc()`
+
+`tgc_alloc()` should return the value that `tgc_add()` returns, so that if it
 failed adding the pointer to the array (in which case it also freed the
 pointer), we'll return `NULL` from `tgc_alloc()`. Otherwise, the allocated
 pointer will be returned, as before.
-
-~~~
 
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
@@ -595,10 +576,15 @@ diff --git a/tgc.c b/tgc.c
 
 It's time to start implementing the sweep phase of our mark and sweep garbage
 collector. For now, `tgc_sweep()` will simply free every pointer in the pointer
-table, removing each one from the table as it goes. Put this in a new section
-called "mark and sweep".
+table, removing each one from the table as it goes.
 
 ~~~
+
+Implement `tgc_sweep()`
+
+If the `ptr` field is `NULL`, that means the slot is empty so we skip it.
+`memset`ting the struct to `0`'s has the effect of setting `ptr` to `NULL`,
+marking the slot as empty.
 
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
@@ -626,15 +612,10 @@ diff --git a/tgc.c b/tgc.c
 
 ~~~
 
-If the `ptr` field is `NULL`, that means the slot is empty so we skip it.
-`memset`ting the struct to `0`'s has the effect of setting `ptr` to `NULL`,
-marking the slot as empty.
+Skip the sweep phase when there are no allocations
 
-Let's skip the sweep phase altogether when there are no allocations. Garbage
-collection is expensive, so we should take any chance we get to skip an entire
-phase like this.
-
-~~~
+Garbage collection is expensive, so we should take any chance we get to skip an
+entire phase like this.
 
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
@@ -651,15 +632,12 @@ diff --git a/tgc.c b/tgc.c
 
 ~~~
 
-Let's create a `tgc_stop()` function to go with `tgc_start()`. The user is
-expected to call `tgc_stop()` at the end of their program, or when they are
-done using garbage collection. It should run the sweep phase to free all
-allocated memory, and also free the memory used by the garbage collector's
+Add a function prototype for `tgc_stop()`
+
+The user is expected to call `tgc_stop()` at the end of their program, or when
+they are done using garbage collection. It should run the sweep phase to free
+all allocated memory, and also free the memory used by the garbage collector's
 internal structures (i.e. the pointer table).
-
-Here is the `tgc_stop()` function prototype.
-
-~~~
 
 diff --git a/tgc.h b/tgc.h
 --- a/tgc.h
@@ -675,9 +653,7 @@ diff --git a/tgc.h b/tgc.h
 
 ~~~
 
-Here is the `tgc_stop()` implementation.
-
-~~~
+Implement `tgc_stop()`
 
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
