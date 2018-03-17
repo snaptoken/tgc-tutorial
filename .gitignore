@@ -2,3 +2,4 @@ repo/
 build/
 .last_synced
 *.zip
+.tags

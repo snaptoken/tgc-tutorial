@@ -240,20 +240,6 @@ h1 kbd, h2 kbd, h3 kbd, h4 kbd, h5 kbd, h6 kbd {
   font-size: 22px;
 }
 
-.diff code {
-  font-size: 14px;
-  line-height: 20px;
-  background-color: none;
-  padding: 0;
-  margin-bottom: 18px;
-  white-space: inherit;
-}
-
-.diff pre {
-  background-color: #fffcfa;
-  padding: 5px 0;
-}
-
 .diff {
   border: 1px solid #ede7e3;
   border-radius: 3px;
@@ -261,49 +247,59 @@ h1 kbd, h2 kbd, h3 kbd, h4 kbd, h5 kbd, h6 kbd {
 }
 
 .diff .diff-header {
-  display: flex;
-  justify-content: space-between;
-  padding: 0 5px;
-  background-color: #ede7e3;
+  padding: 2px 5px;
+  background-color: #fafbfc;
+  border-bottom: 1px solid #ede7e3;
   font-size: 16px;
-  color: #666;
-}
-
-.diff .step-filename {
-  font-weight: bold;
 }
 
 .diff .diff-header a {
-  text-decoration: none;
   color: #666;
+  font-weight: bold;
 }
 
-.diff .diff-header a:hover {
-  text-decoration: underline;
+.diff table {
+  width: 100%;
+  border-spacing: 0;
+  border-collapse: collapse;
 }
 
-.diff .step-filename a {
-  text-decoration: underline;
-}
-
-.diff .line {
-  display: block;
+.diff tr {
   height: 20px;
+  line-height: 20px;
   padding: 0 5px;
-  position: relative;
+  background-color: #fff;
+  font-family: 'Fira Mono', monospace;
+  font-size: 14px;
 }
 
-.diff .line.folded {
+.diff td.line-number {
+  width: 1%;
+  min-width: 55px;
+  text-align: right;
+  padding-right: 15px;
+  background-color: #fafbfc;
+  color: #ccc;
+}
+
+.diff td.line {
+  white-space: pre;
+  position: relative;
+  background-color: inherit;
+  padding-left: 5px;
+}
+
+.diff td.line.folded {
   background-color: #eef;
   opacity: 0.5;
 }
 
-.diff ins.line {
+.diff td.line.added {
   background-color: #ffd;
   text-decoration: none;
 }
 
-.diff ins.line::after {
+.diff td.line.added::after {
   display: block;
   content: '';
   width: 20px;
@@ -315,12 +311,12 @@ h1 kbd, h2 kbd, h3 kbd, h4 kbd, h5 kbd, h6 kbd {
   top: 0;
 }
 
-.diff del.line {
+.diff td.line.removed {
   background-color: #fdd;
   text-decoration: line-through;
 }
 
-.diff del.line::after {
+.diff td.line.removed::after {
   display: block;
   content: '';
   width: 20px;
@@ -345,17 +341,17 @@ h1 kbd, h2 kbd, h3 kbd, h4 kbd, h5 kbd, h6 kbd {
     padding: 0 5px;
   }
 
-  .highlight {
+  .diff .diff-code {
     overflow-x: scroll;
   }
 
-  .diff .line {
+  .diff .table {
     width: 700px;
   }
 
-  .diff ins.line::after, .diff del.line::after {
+  .diff td.line.added::after, .diff td.line.removed::after {
     display: none;
   }
 }
 
-<%= syntax_highlighting_css(".highlight").gsub("font-weight: bold;", "font-weight: 500;") %>
+<%= syntax_highlighting_css(".line").gsub("font-weight: bold;", "font-weight: 500;") %>

@@ -10,27 +10,28 @@
   <% for diff in diffs %>
     <div class="diff">
       <div class="diff-header">
-        <div class="step-filename">
-          <a href="https://github.com/snaptoken/<%= name %>-src/blob/step-<%= number %>/<%= diff.filename %>">
-            <%= diff.filename %>
-          </a>
-        </div>
+        <a href="https://github.com/snaptoken/<%= name %>-tutorial/blob/step-<%= number %>/<%= diff.filename %>">
+          <%= diff.filename %>
+        </a>
       </div>
-      <pre class="highlight"><code>\\
-        <% for line in diff.lines %>\\
-          <% if line.type == :folded %>\\
-            <div class="line folded">\\
-              <%= line.source.gsub('<span class="err">…</span>', '…') %>\\
-            </div>\\
-          <% else %>\\
-            <% tag = {unchanged: :div, added: :ins, removed: :del}[line.type] %>\\
-            <% tag = :div if diff.is_new_file %>\\
-            <<%= tag %> class="line">\\
-              <%= line.source %>\\
-            </<%= tag %>>\\
-          <% end %>\\
-        <% end %>\\
-      </code></pre>
+      <div class="diff-code">
+        <table>
+        <% for line in diff.lines %>
+          <tr>
+            <td class="line-number">
+              <%= line.line_number %>
+            </td>
+            <td class="line <%= diff.is_new_file ? :unchanged : line.type %>">\\
+              <% if line.type == :folded %>\\
+                <%= line.source.gsub('<span class="err">…</span>', '…') %>\\
+              <% else %>\\
+                <%= line.source %>\\
+              <% end %>\\
+            </td>
+          </tr>
+        <% end %>
+        </table>
+      </div>
     </div>
   <% end %>
 
