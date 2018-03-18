@@ -3,16 +3,17 @@
     <%= number %>
   </div>
 
-  <div class="step-summary">
-    <%= markdown(summary) %>
-  </div>
-
   <% for diff in diffs %>
     <div class="diff">
       <div class="diff-header">
-        <a href="https://github.com/snaptoken/<%= name %>-tutorial/blob/step-<%= number %>/<%= diff.filename %>">
-          <%= diff.filename %>
-        </a>
+        <div class="diff-summary">
+          <%= markdown(summary) %>
+        </div>
+        <div class="diff-filename">
+          <a href="https://github.com/snaptoken/<%= name %>-src/blob/step-<%= number %>/<%= diff.filename %>">
+            <%= diff.filename %>
+          </a>
+        </div>
       </div>
       <div class="diff-code">
         <table>

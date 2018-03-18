@@ -220,13 +220,11 @@ h1 kbd, h2 kbd, h3 kbd, h4 kbd, h5 kbd, h6 kbd {
 
 .step {
   margin-top: 18px;
-  padding-top: 9px;
-  border-top: 1px dashed pink;
 }
 
 .step-number {
   position: absolute;
-  margin-top: -13px;
+  margin-top: -6px;
   margin-left: -148px;
   font-size: 48px;
   font-family: Helvetica;
@@ -235,25 +233,31 @@ h1 kbd, h2 kbd, h3 kbd, h4 kbd, h5 kbd, h6 kbd {
   text-align: right;
 }
 
-.step-summary p {
-  margin-top: 0;
-  font-size: 22px;
-}
-
 .diff {
   border: 1px solid #ede7e3;
   border-radius: 3px;
-  margin-top: 18px;
 }
 
 .diff .diff-header {
-  padding: 2px 5px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 7px 10px;
   background-color: #fafbfc;
   border-bottom: 1px solid #ede7e3;
   font-size: 16px;
 }
 
-.diff .diff-header a {
+.diff .diff-summary {
+  color: #666;
+  font-size: 18px;
+}
+
+.diff .diff-summary p {
+  margin-top: 0;
+}
+
+.diff .diff-filename a {
   color: #666;
   font-weight: bold;
 }
