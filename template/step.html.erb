@@ -4,6 +4,7 @@
   </div>
 
   <% for diff in diffs %>
+    <% diff = Leg::DiffTransformers::SyntaxHighlight.new.transform(diff) %>
     <div class="diff">
       <div class="diff-header">
         <div class="diff-summary">
@@ -35,8 +36,4 @@
       </div>
     </div>
   <% end %>
-
-  <div class="step-explanation">
-    <%= markdown(text) %>
-  </div>
 </div>
