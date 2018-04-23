@@ -1,6 +1,7 @@
 name: tgc
 version: "1.0.0beta0"
 title: Build Your Own Garbage Collector
+offline: true
 repo_author:
   name: snaptoken
   email: snaptoken@viewsourcecode.org

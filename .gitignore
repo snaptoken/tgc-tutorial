@@ -1,5 +1,4 @@
-repo/
-build/
-.last_synced
-*.zip
-.tags
+/step
+/build
+/.leg
+/.tags
