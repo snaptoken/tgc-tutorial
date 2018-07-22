@@ -1,6 +1,6 @@
 # Mark
 
-~~~ add-mark
+~~~ 29. add-mark
 diff --git a/tgc.h b/tgc.h
 --- a/tgc.h
 +++ b/tgc.h
@@ -13,7 +13,7 @@ diff --git a/tgc.h b/tgc.h
 |
 |typedef struct {
 
-~~~ set-mark
+~~~ 30. set-mark
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
@@ -26,7 +26,7 @@ diff --git a/tgc.c b/tgc.c
 |  for (i = 0; i < gc->nslots; i++) {
 |    if (gc->items[i].ptr == NULL) {
 
-~~~ mark-ptr
+~~~ 31. mark-ptr
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
@@ -49,7 +49,7 @@ diff --git a/tgc.c b/tgc.c
 |  size_t i;
 |
 
-~~~ add-bottom
+~~~ 32. add-bottom
 diff --git a/tgc.h b/tgc.h
 --- a/tgc.h
 +++ b/tgc.h
@@ -62,7 +62,7 @@ diff --git a/tgc.h b/tgc.h
 |  size_t nitems, nslots;
 |} tgc_t;
 
-~~~ start-stk
+~~~ 33. start-stk
 diff --git a/tgc.h b/tgc.h
 --- a/tgc.h
 +++ b/tgc.h
@@ -76,7 +76,7 @@ diff --git a/tgc.h b/tgc.h
 |
 |void *tgc_alloc(tgc_t *gc, size_t size);
 
-~~~ set-bottom
+~~~ 34. set-bottom
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
@@ -91,7 +91,7 @@ diff --git a/tgc.c b/tgc.c
 |  gc->nslots = 0;
 |  gc->items = NULL;
 
-~~~ mark-stack
+~~~ 35. mark-stack
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
@@ -112,7 +112,7 @@ diff --git a/tgc.c b/tgc.c
 |  size_t i;
 |
 
-~~~ mark-stack-handle-both-directions
+~~~ 36. mark-stack-handle-both-directions
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
@@ -136,7 +136,7 @@ diff --git a/tgc.c b/tgc.c
 |}
 |
 
-~~~ mark
+~~~ 37. mark
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
@@ -152,7 +152,7 @@ diff --git a/tgc.c b/tgc.c
 |  size_t i;
 |
 
-~~~ mark-return-early
+~~~ 38. mark-return-early
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
@@ -166,7 +166,7 @@ diff --git a/tgc.c b/tgc.c
 |}
 |
 
-~~~ mark-volatile
+~~~ 39. mark-volatile
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
@@ -184,7 +184,7 @@ diff --git a/tgc.c b/tgc.c
 |
 |static void tgc_sweep(tgc_t *gc) {
 
-~~~ add-size
+~~~ 40. add-size
 diff --git a/tgc.h b/tgc.h
 --- a/tgc.h
 +++ b/tgc.h
@@ -197,7 +197,7 @@ diff --git a/tgc.h b/tgc.h
 |
 |typedef struct {
 
-~~~ add-ptr-size
+~~~ 41. add-ptr-size
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
@@ -217,7 +217,7 @@ diff --git a/tgc.c b/tgc.c
 |  for (i = 0; i < gc->nslots; i++) {
 |    if (gc->items[i].ptr == NULL) {
 
-~~~ add-pass-size
+~~~ 42. add-pass-size
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
@@ -236,7 +236,7 @@ diff --git a/tgc.c b/tgc.c
 |  } else {
 |    gc->nitems--;
 
-~~~ alloc-pass-size
+~~~ 43. alloc-pass-size
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
@@ -250,7 +250,7 @@ diff --git a/tgc.c b/tgc.c
 |  return ptr;
 |}
 
-~~~ mark-heap
+~~~ 44. mark-heap
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
@@ -271,7 +271,7 @@ diff --git a/tgc.c b/tgc.c
 |    }
 |  }
 
-~~~ mark-ptr-avoid-infinite-recursion
+~~~ 45. mark-ptr-avoid-infinite-recursion
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
@@ -284,7 +284,7 @@ diff --git a/tgc.c b/tgc.c
 |      for (k = 0; k < gc->items[i].size/sizeof(void*); k++) {
 |        tgc_mark_ptr(gc, ((void**)gc->items[i].ptr)[k]);
 
-~~~ mark-registers
+~~~ 46. mark-registers
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
@@ -304,7 +304,7 @@ diff --git a/tgc.c b/tgc.c
 |}
 |
 
-~~~ include-setjmp
+~~~ 47. include-setjmp
 diff --git a/tgc.h b/tgc.h
 --- a/tgc.h
 +++ b/tgc.h
@@ -317,7 +317,7 @@ diff --git a/tgc.h b/tgc.h
 |#include <string.h>
 |
 
-~~~ add-minptr-maxptr
+~~~ 48. add-minptr-maxptr
 diff --git a/tgc.h b/tgc.h
 --- a/tgc.h
 +++ b/tgc.h
@@ -338,7 +338,7 @@ diff --git a/tgc.h b/tgc.h
 |  size_t nitems, nslots;
 |} tgc_t;
 
-~~~ init-minptr-maxptr
+~~~ 49. init-minptr-maxptr
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
@@ -352,7 +352,7 @@ diff --git a/tgc.c b/tgc.c
 |
 |void tgc_stop(tgc_t *gc) {
 
-~~~ set-minptr-maxptr
+~~~ 50. set-minptr-maxptr
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
@@ -368,7 +368,7 @@ diff --git a/tgc.c b/tgc.c
 |  if (tgc_resize(gc)) {
 |    tgc_add_ptr(gc, ptr, size);
 
-~~~ use-minptr-maxptr
+~~~ 51. use-minptr-maxptr
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c

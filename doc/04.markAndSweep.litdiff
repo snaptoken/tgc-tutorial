@@ -1,6 +1,6 @@
 # Mark and Sweep
 
-~~~ sweep-unmarked
+~~~ 52. sweep-unmarked
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
@@ -13,7 +13,7 @@ diff --git a/tgc.c b/tgc.c
 |    memset(&gc->items[i], 0, sizeof(tgc_ptr_t));
 |    gc->nitems--;
 
-~~~ sweep-reset-mark
+~~~ 53. sweep-reset-mark
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
@@ -29,7 +29,7 @@ diff --git a/tgc.c b/tgc.c
 |
 |/*** gc control ***/
 
-~~~ run-prototype
+~~~ 54. run-prototype
 diff --git a/tgc.h b/tgc.h
 --- a/tgc.h
 +++ b/tgc.h
@@ -42,7 +42,7 @@ diff --git a/tgc.h b/tgc.h
 |void *tgc_alloc(tgc_t *gc, size_t size);
 |
 
-~~~ run
+~~~ 55. run
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
@@ -59,7 +59,7 @@ diff --git a/tgc.c b/tgc.c
 |
 |static void *tgc_add(tgc_t *gc, void *ptr, size_t size) {
 
-~~~ collect-on-alloc
+~~~ 56. collect-on-alloc
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
@@ -72,7 +72,7 @@ diff --git a/tgc.c b/tgc.c
 |  } else {
 |    gc->nitems--;
 
-~~~ add-mitems
+~~~ 57. add-mitems
 diff --git a/tgc.h b/tgc.h
 --- a/tgc.h
 +++ b/tgc.h
@@ -86,7 +86,7 @@ diff --git a/tgc.h b/tgc.h
 |
 |void tgc_start(tgc_t *gc, void *stk);
 
-~~~ init-mitems
+~~~ 58. init-mitems
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
@@ -99,7 +99,7 @@ diff --git a/tgc.c b/tgc.c
 |  gc->minptr = UINTPTR_MAX;
 |  gc->maxptr = 0;
 
-~~~ set-mitems
+~~~ 59. set-mitems
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
@@ -113,7 +113,7 @@ diff --git a/tgc.c b/tgc.c
 |
 |/*** gc control ***/
 
-~~~ use-mitems
+~~~ 60. use-mitems
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
@@ -129,7 +129,7 @@ diff --git a/tgc.c b/tgc.c
 |  } else {
 |    gc->nitems--;
 
-~~~ add-sweepfactor
+~~~ 61. add-sweepfactor
 diff --git a/tgc.h b/tgc.h
 --- a/tgc.h
 +++ b/tgc.h
@@ -142,7 +142,7 @@ diff --git a/tgc.h b/tgc.h
 |} tgc_t;
 |
 
-~~~ set-sweepfactor
+~~~ 62. set-sweepfactor
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
@@ -155,7 +155,7 @@ diff --git a/tgc.c b/tgc.c
 |
 |void tgc_stop(tgc_t *gc) {
 
-~~~ use-sweepfactor
+~~~ 63. use-sweepfactor
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
@@ -169,7 +169,7 @@ diff --git a/tgc.c b/tgc.c
 |
 |/*** gc control ***/
 
-~~~ add-paused
+~~~ 64. add-paused
 diff --git a/tgc.h b/tgc.h
 --- a/tgc.h
 +++ b/tgc.h
@@ -182,7 +182,7 @@ diff --git a/tgc.h b/tgc.h
 |  tgc_ptr_t *items;
 |  double sweepfactor;
 
-~~~ init-paused
+~~~ 65. init-paused
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
@@ -195,7 +195,7 @@ diff --git a/tgc.c b/tgc.c
 |  gc->nslots = 0;
 |  gc->mitems = 0;
 
-~~~ use-paused
+~~~ 66. use-paused
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
@@ -209,7 +209,7 @@ diff --git a/tgc.c b/tgc.c
 |    }
 |    return ptr;
 
-~~~ pause-resume-prototypes
+~~~ 67. pause-resume-prototypes
 diff --git a/tgc.h b/tgc.h
 --- a/tgc.h
 +++ b/tgc.h
@@ -223,7 +223,7 @@ diff --git a/tgc.h b/tgc.h
 |
 |void *tgc_alloc(tgc_t *gc, size_t size);
 
-~~~ pause-resume
+~~~ 68. pause-resume
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c

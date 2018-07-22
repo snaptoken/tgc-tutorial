@@ -1,6 +1,6 @@
 # Hash Table
 
-~~~ hash
+~~~ 69. hash
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
@@ -16,7 +16,7 @@ diff --git a/tgc.c b/tgc.c
 |  tgc_ptr_t item;
 |  size_t i;
 
-~~~ add-ptr-use-hash
+~~~ 70. add-ptr-use-hash
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
@@ -42,7 +42,7 @@ diff --git a/tgc.c b/tgc.c
 |}
 |
 
-~~~ mark-ptr-use-hash
+~~~ 71. mark-ptr-use-hash
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
@@ -73,7 +73,7 @@ diff --git a/tgc.c b/tgc.c
 |}
 |
 
-~~~ resize-readd-ptrs
+~~~ 72. resize-readd-ptrs
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
@@ -99,7 +99,7 @@ diff --git a/tgc.c b/tgc.c
 |  free(old_items);
 |
 
-~~~ add-loadfactor
+~~~ 73. add-loadfactor
 diff --git a/tgc.h b/tgc.h
 --- a/tgc.h
 +++ b/tgc.h
@@ -113,7 +113,7 @@ diff --git a/tgc.h b/tgc.h
 |} tgc_t;
 |
 
-~~~ init-loadfactor
+~~~ 74. init-loadfactor
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
@@ -126,7 +126,7 @@ diff --git a/tgc.c b/tgc.c
 |}
 |
 
-~~~ ideal-size
+~~~ 75. ideal-size
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
@@ -142,7 +142,7 @@ diff --git a/tgc.c b/tgc.c
 |  size_t i;
 |  tgc_ptr_t *old_items = gc->items;
 
-~~~ resize-more
+~~~ 76. resize-more
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
@@ -160,7 +160,7 @@ diff --git a/tgc.c b/tgc.c
 |
 |static void tgc_mark_ptr(tgc_t *gc, void *ptr) {
 
-~~~ rehash
+~~~ 77. rehash
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
@@ -182,7 +182,7 @@ diff --git a/tgc.c b/tgc.c
 |
 |  if (gc->items == NULL) {
 
-~~~ use-resize-more
+~~~ 78. use-resize-more
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
@@ -196,7 +196,7 @@ diff --git a/tgc.c b/tgc.c
 |    if (!gc->paused && gc->nitems > gc->mitems) {
 |      tgc_run(gc);
 
-~~~ add-primes
+~~~ 79. add-primes
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
@@ -221,7 +221,7 @@ diff --git a/tgc.c b/tgc.c
 |  return (size_t)((double)(size+1) / gc->loadfactor);
 |}
 
-~~~ use-primes
+~~~ 80. use-primes
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
@@ -240,7 +240,7 @@ diff --git a/tgc.c b/tgc.c
 |
 |static int tgc_rehash(tgc_t *gc, size_t new_size) {
 
-~~~ fix-large-sizes
+~~~ 81. fix-large-sizes
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
@@ -262,7 +262,7 @@ diff --git a/tgc.c b/tgc.c
 |}
 |
 
-~~~ resize-less
+~~~ 82. resize-less
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
@@ -280,7 +280,7 @@ diff --git a/tgc.c b/tgc.c
 |
 |static void tgc_mark_ptr(tgc_t *gc, void *ptr) {
 
-~~~ call-resize-less
+~~~ 83. call-resize-less
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
@@ -294,7 +294,7 @@ diff --git a/tgc.c b/tgc.c
 |}
 |
 
-~~~ sweep-while-loop
+~~~ 84. sweep-while-loop
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
@@ -313,7 +313,7 @@ diff --git a/tgc.c b/tgc.c
 |    memset(&gc->items[i], 0, sizeof(tgc_ptr_t));
 |    gc->nitems--;
 
-~~~ linear-probing-invariant
+~~~ 85. linear-probing-invariant
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
@@ -350,7 +350,7 @@ diff --git a/tgc.c b/tgc.c
 |  }
 |
 
-~~~ mark-ptr-stop-search-early
+~~~ 86. mark-ptr-stop-search-early
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
@@ -364,7 +364,7 @@ diff --git a/tgc.c b/tgc.c
 |      if (gc->items[i].mark) { return; }
 |      gc->items[i].mark = 1;
 
-~~~ add-hash
+~~~ 87. add-hash
 diff --git a/tgc.h b/tgc.h
 --- a/tgc.h
 +++ b/tgc.h
@@ -378,7 +378,7 @@ diff --git a/tgc.h b/tgc.h
 |
 |typedef struct {
 
-~~~ set-hash
+~~~ 88. set-hash
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
@@ -391,7 +391,7 @@ diff --git a/tgc.c b/tgc.c
 |  while (1) {
 |    if (gc->items[i].ptr == NULL) {
 
-~~~ add-ptr-hash-zero
+~~~ 89. add-ptr-hash-zero
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
@@ -418,7 +418,7 @@ diff --git a/tgc.c b/tgc.c
 |    i = (i+1) % gc->nslots;
 |  }
 
-~~~ rehash-hash-zero
+~~~ 90. rehash-hash-zero
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
@@ -432,7 +432,7 @@ diff --git a/tgc.c b/tgc.c
 |    }
 |  }
 
-~~~ mark-ptr-hash-zero
+~~~ 91. mark-ptr-hash-zero
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
@@ -456,7 +456,7 @@ diff --git a/tgc.c b/tgc.c
 |      if (gc->items[i].mark) { return; }
 |      gc->items[i].mark = 1;
 
-~~~ sweep-hash-zero
+~~~ 92. sweep-hash-zero
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
@@ -483,7 +483,7 @@ diff --git a/tgc.c b/tgc.c
 |        memset(&gc->items[nj],              0, sizeof(tgc_ptr_t));
 |        j = nj;
 
-~~~ probe
+~~~ 93. probe
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
@@ -501,7 +501,7 @@ diff --git a/tgc.c b/tgc.c
 |  tgc_ptr_t item;
 |  size_t i, h;
 
-~~~ sweep-robin-hood
+~~~ 94. sweep-robin-hood
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
@@ -515,7 +515,7 @@ diff --git a/tgc.c b/tgc.c
 |        memset(&gc->items[nj],              0, sizeof(tgc_ptr_t));
 |        j = nj;
 
-~~~ add-ptr-count-iterations
+~~~ 95. add-ptr-count-iterations
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
@@ -541,7 +541,7 @@ diff --git a/tgc.c b/tgc.c
 |}
 |
 
-~~~ add-ptr-probe
+~~~ 96. add-ptr-probe
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
@@ -563,7 +563,7 @@ diff --git a/tgc.c b/tgc.c
 |  }
 |}
 
-~~~ add-ptr-robin-hood
+~~~ 97. add-ptr-robin-hood
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
@@ -590,7 +590,7 @@ diff --git a/tgc.c b/tgc.c
 |  }
 |}
 
-~~~ mark-ptr-robin-hood
+~~~ 98. mark-ptr-robin-hood
 diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
