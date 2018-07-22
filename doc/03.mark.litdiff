@@ -1,7 +1,6 @@
 # Mark
 
 ~~~ 29. add-mark
-diff --git a/tgc.h b/tgc.h
 --- a/tgc.h
 +++ b/tgc.h
 @@ -6,6 +6,7 @@
@@ -14,7 +13,6 @@ diff --git a/tgc.h b/tgc.h
 |typedef struct {
 
 ~~~ 30. set-mark
-diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
 @@ -7,6 +7,7 @@
@@ -27,7 +25,6 @@ diff --git a/tgc.c b/tgc.c
 |    if (gc->items[i].ptr == NULL) {
 
 ~~~ 31. mark-ptr
-diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
 @@ -44,6 +44,17 @@
@@ -50,7 +47,6 @@ diff --git a/tgc.c b/tgc.c
 |
 
 ~~~ 32. add-bottom
-diff --git a/tgc.h b/tgc.h
 --- a/tgc.h
 +++ b/tgc.h
 @@ -10,6 +10,7 @@
@@ -63,7 +59,6 @@ diff --git a/tgc.h b/tgc.h
 |} tgc_t;
 
 ~~~ 33. start-stk
-diff --git a/tgc.h b/tgc.h
 --- a/tgc.h
 +++ b/tgc.h
 @@ -15,7 +15,7 @@
@@ -77,7 +72,6 @@ diff --git a/tgc.h b/tgc.h
 |void *tgc_alloc(tgc_t *gc, size_t size);
 
 ~~~ 34. set-bottom
-diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
 @@ -70,7 +70,8 @@
@@ -92,7 +86,6 @@ diff --git a/tgc.c b/tgc.c
 |  gc->items = NULL;
 
 ~~~ 35. mark-stack
-diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
 @@ -55,6 +55,15 @@
@@ -113,7 +106,6 @@ diff --git a/tgc.c b/tgc.c
 |
 
 ~~~ 36. mark-stack-handle-both-directions
-diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
 @@ -59,8 +59,16 @@
@@ -137,7 +129,6 @@ diff --git a/tgc.c b/tgc.c
 |
 
 ~~~ 37. mark
-diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
 @@ -72,6 +72,10 @@
@@ -153,7 +144,6 @@ diff --git a/tgc.c b/tgc.c
 |
 
 ~~~ 38. mark-return-early
-diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
 @@ -73,6 +73,8 @@
@@ -167,7 +157,6 @@ diff --git a/tgc.c b/tgc.c
 |
 
 ~~~ 39. mark-volatile
-diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
 @@ -73,9 +73,11 @@
@@ -185,7 +174,6 @@ diff --git a/tgc.c b/tgc.c
 |static void tgc_sweep(tgc_t *gc) {
 
 ~~~ 40. add-size
-diff --git a/tgc.h b/tgc.h
 --- a/tgc.h
 +++ b/tgc.h
 @@ -7,6 +7,7 @@
@@ -198,7 +186,6 @@ diff --git a/tgc.h b/tgc.h
 |typedef struct {
 
 ~~~ 41. add-ptr-size
-diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
 @@ -2,12 +2,13 @@
@@ -218,7 +205,6 @@ diff --git a/tgc.c b/tgc.c
 |    if (gc->items[i].ptr == NULL) {
 
 ~~~ 42. add-pass-size
-diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
 @@ -110,11 +110,11 @@
@@ -237,7 +223,6 @@ diff --git a/tgc.c b/tgc.c
 |    gc->nitems--;
 
 ~~~ 43. alloc-pass-size
-diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
 @@ -126,7 +126,7 @@
@@ -251,7 +236,6 @@ diff --git a/tgc.c b/tgc.c
 |}
 
 ~~~ 44. mark-heap
-diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
 @@ -46,11 +46,14 @@
@@ -272,7 +256,6 @@ diff --git a/tgc.c b/tgc.c
 |  }
 
 ~~~ 45. mark-ptr-avoid-infinite-recursion
-diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
 @@ -50,6 +50,7 @@
@@ -285,7 +268,6 @@ diff --git a/tgc.c b/tgc.c
 |        tgc_mark_ptr(gc, ((void**)gc->items[i].ptr)[k]);
 
 ~~~ 46. mark-registers
-diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
 @@ -78,10 +78,14 @@
@@ -305,7 +287,6 @@ diff --git a/tgc.c b/tgc.c
 |
 
 ~~~ 47. include-setjmp
-diff --git a/tgc.h b/tgc.h
 --- a/tgc.h
 +++ b/tgc.h
 @@ -1,6 +1,7 @@
@@ -318,7 +299,6 @@ diff --git a/tgc.h b/tgc.h
 |
 
 ~~~ 48. add-minptr-maxptr
-diff --git a/tgc.h b/tgc.h
 --- a/tgc.h
 +++ b/tgc.h
 @@ -2,6 +2,7 @@
@@ -339,7 +319,6 @@ diff --git a/tgc.h b/tgc.h
 |} tgc_t;
 
 ~~~ 49. init-minptr-maxptr
-diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
 @@ -109,6 +109,8 @@
@@ -353,7 +332,6 @@ diff --git a/tgc.c b/tgc.c
 |void tgc_stop(tgc_t *gc) {
 
 ~~~ 50. set-minptr-maxptr
-diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
 @@ -122,6 +122,10 @@
@@ -369,7 +347,6 @@ diff --git a/tgc.c b/tgc.c
 |    tgc_add_ptr(gc, ptr, size);
 
 ~~~ 51. use-minptr-maxptr
-diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
 @@ -48,6 +48,9 @@

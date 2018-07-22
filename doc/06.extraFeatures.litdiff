@@ -1,7 +1,6 @@
 # Extra Features
 
 ~~~ 99. change-mark-to-flags
-diff --git a/tgc.h b/tgc.h
 --- a/tgc.h
 +++ b/tgc.h
 @@ -6,9 +6,13 @@
@@ -21,7 +20,6 @@ diff --git a/tgc.h b/tgc.h
 |
 
 ~~~ 100. add-ptr-flags
-diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
 @@ -12,14 +12,14 @@
@@ -43,7 +41,6 @@ diff --git a/tgc.c b/tgc.c
 |
 
 ~~~ 101. rehash-flags
-diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
 @@ -82,7 +82,7 @@
@@ -57,7 +54,6 @@ diff --git a/tgc.c b/tgc.c
 |
 
 ~~~ 102. add-flags
-diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
 @@ -229,7 +229,7 @@
@@ -80,7 +76,6 @@ diff --git a/tgc.c b/tgc.c
 |    }
 
 ~~~ 103. zero-flags
-diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
 @@ -252,7 +252,7 @@
@@ -94,7 +89,6 @@ diff --git a/tgc.c b/tgc.c
 |}
 
 ~~~ 104. mark-ptr-flags
-diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
 @@ -117,8 +117,8 @@
@@ -110,7 +104,6 @@ diff --git a/tgc.c b/tgc.c
 |      }
 
 ~~~ 105. sweep-flags
-diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
 @@ -164,8 +164,8 @@
@@ -126,7 +119,6 @@ diff --git a/tgc.c b/tgc.c
 |    memset(&gc->items[i], 0, sizeof(tgc_ptr_t));
 
 ~~~ 106. sweep-reset-mark-flag
-diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
 @@ -186,7 +186,7 @@
@@ -140,7 +132,6 @@ diff --git a/tgc.c b/tgc.c
 |  tgc_resize_less(gc);
 
 ~~~ 107. add-root-flag
-diff --git a/tgc.h b/tgc.h
 --- a/tgc.h
 +++ b/tgc.h
 @@ -7,7 +7,8 @@
@@ -155,7 +146,6 @@ diff --git a/tgc.h b/tgc.h
 |typedef struct {
 
 ~~~ 108. mark-roots
-diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
 @@ -146,12 +146,24 @@
@@ -185,7 +175,6 @@ diff --git a/tgc.c b/tgc.c
 |  mark_stack(gc);
 
 ~~~ 109. sweep-skip-roots
-diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
 @@ -178,6 +178,7 @@
@@ -198,7 +187,6 @@ diff --git a/tgc.c b/tgc.c
 |    memset(&gc->items[i], 0, sizeof(tgc_ptr_t));
 
 ~~~ 110. alloc-opt-prototype
-diff --git a/tgc.h b/tgc.h
 --- a/tgc.h
 +++ b/tgc.h
 @@ -34,4 +34,6 @@
@@ -210,7 +198,6 @@ diff --git a/tgc.h b/tgc.h
 |#endif
 
 ~~~ 111. alloc-opt
-diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
 @@ -262,10 +262,10 @@
@@ -228,7 +215,6 @@ diff --git a/tgc.c b/tgc.c
 |}
 
 ~~~ 112. alloc-delegates
-diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
 @@ -262,6 +262,10 @@
@@ -244,7 +230,6 @@ diff --git a/tgc.c b/tgc.c
 |  if (ptr != NULL) {
 
 ~~~ 113. get-set-flags-prototypes
-diff --git a/tgc.h b/tgc.h
 --- a/tgc.h
 +++ b/tgc.h
 @@ -36,4 +36,7 @@
@@ -257,7 +242,6 @@ diff --git a/tgc.h b/tgc.h
 |#endif
 
 ~~~ 114. get-set-flags
-diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
 @@ -273,3 +273,16 @@
@@ -279,7 +263,6 @@ diff --git a/tgc.c b/tgc.c
 +}
 
 ~~~ 115. get-ptr
-diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
 @@ -12,6 +12,18 @@
@@ -303,7 +286,6 @@ diff --git a/tgc.c b/tgc.c
 |  size_t i, j, h, p;
 
 ~~~ 116. get-size-prototype
-diff --git a/tgc.h b/tgc.h
 --- a/tgc.h
 +++ b/tgc.h
 @@ -38,5 +38,6 @@
@@ -315,7 +297,6 @@ diff --git a/tgc.h b/tgc.h
 |#endif
 
 ~~~ 117. get-size
-diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
 @@ -298,3 +298,9 @@
@@ -330,7 +311,6 @@ diff --git a/tgc.c b/tgc.c
 +}
 
 ~~~ 118. add-leaf-flag
-diff --git a/tgc.h b/tgc.h
 --- a/tgc.h
 +++ b/tgc.h
 @@ -8,7 +8,8 @@
@@ -345,7 +325,6 @@ diff --git a/tgc.h b/tgc.h
 |typedef struct {
 
 ~~~ 119. mark-ptr-leaf
-diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
 @@ -131,6 +131,7 @@
@@ -358,7 +337,6 @@ diff --git a/tgc.c b/tgc.c
 |      }
 
 ~~~ 120. mark-leaf
-diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
 @@ -171,6 +171,7 @@
@@ -371,7 +349,6 @@ diff --git a/tgc.c b/tgc.c
 |      }
 
 ~~~ 121. add-dtor
-diff --git a/tgc.h b/tgc.h
 --- a/tgc.h
 +++ b/tgc.h
 @@ -16,6 +16,7 @@
@@ -384,7 +361,6 @@ diff --git a/tgc.h b/tgc.h
 |typedef struct {
 
 ~~~ 122. alloc-opt-dtor-prototype
-diff --git a/tgc.h b/tgc.h
 --- a/tgc.h
 +++ b/tgc.h
 @@ -36,7 +36,7 @@
@@ -398,7 +374,6 @@ diff --git a/tgc.h b/tgc.h
 |void tgc_set_flags(tgc_t *gc, void *ptr, int flags);
 
 ~~~ 123. alloc-opt-dtor
-diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
 @@ -280,10 +280,10 @@
@@ -416,7 +391,6 @@ diff --git a/tgc.c b/tgc.c
 |}
 
 ~~~ 124. alloc-dtor
-diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
 @@ -277,7 +277,7 @@
@@ -430,7 +404,6 @@ diff --git a/tgc.c b/tgc.c
 |void *tgc_alloc_opt(tgc_t *gc, size_t size, int flags, void(*dtor)(void*)) {
 
 ~~~ 125. add-pass-dtor
-diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
 @@ -256,7 +256,10 @@
@@ -456,7 +429,6 @@ diff --git a/tgc.c b/tgc.c
 |    }
 
 ~~~ 126. set-dtor
-diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
 @@ -24,7 +24,10 @@
@@ -481,7 +453,6 @@ diff --git a/tgc.c b/tgc.c
 |    h = gc->items[i].hash;
 
 ~~~ 127. rehash-dtor
-diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
 @@ -98,7 +98,9 @@
@@ -497,7 +468,6 @@ diff --git a/tgc.c b/tgc.c
 |
 
 ~~~ 128. get-set-dtor-prototypes
-diff --git a/tgc.h b/tgc.h
 --- a/tgc.h
 +++ b/tgc.h
 @@ -40,6 +40,8 @@
@@ -511,7 +481,6 @@ diff --git a/tgc.h b/tgc.h
 |#endif
 
 ~~~ 129. get-set-dtor
-diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
 @@ -310,6 +310,17 @@
@@ -534,7 +503,6 @@ diff --git a/tgc.c b/tgc.c
 |  if (p) { return p->size; }
 
 ~~~ 130. add-frees
-diff --git a/tgc.h b/tgc.h
 --- a/tgc.h
 +++ b/tgc.h
 @@ -23,9 +23,9 @@
@@ -551,7 +519,6 @@ diff --git a/tgc.h b/tgc.h
 |void tgc_start(tgc_t *gc, void *stk);
 
 ~~~ 131. init-frees
-diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
 @@ -235,7 +235,9 @@
@@ -566,7 +533,6 @@ diff --git a/tgc.c b/tgc.c
 |  gc->loadfactor = 0.9;
 
 ~~~ 132. stop-frees
-diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
 @@ -247,6 +247,7 @@
@@ -579,7 +545,6 @@ diff --git a/tgc.c b/tgc.c
 |void tgc_pause(tgc_t *gc) {
 
 ~~~ 133. sweep-count-frees
-diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
 @@ -194,6 +194,14 @@
@@ -599,7 +564,6 @@ diff --git a/tgc.c b/tgc.c
 |    if (gc->items[i].hash ==        0) { i++; continue; }
 
 ~~~ 134. sweep-alloc-frees
-diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
 @@ -202,6 +202,9 @@
@@ -614,7 +578,6 @@ diff --git a/tgc.c b/tgc.c
 |    if (gc->items[i].hash ==        0) { i++; continue; }
 
 ~~~ 135. sweep-add-to-frees
-diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
 @@ -190,7 +190,7 @@
@@ -644,7 +607,6 @@ diff --git a/tgc.c b/tgc.c
 |    j = i;
 
 ~~~ 136. sweep-free-frees
-diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
 @@ -236,6 +236,11 @@
@@ -661,7 +623,6 @@ diff --git a/tgc.c b/tgc.c
 |/*** gc control ***/
 
 ~~~ 137. sweep-cleanup-frees
-diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
 @@ -241,6 +241,10 @@
@@ -677,7 +638,6 @@ diff --git a/tgc.c b/tgc.c
 |/*** gc control ***/
 
 ~~~ 138. calloc-prototypes
-diff --git a/tgc.h b/tgc.h
 --- a/tgc.h
 +++ b/tgc.h
 @@ -35,8 +35,11 @@
@@ -694,7 +654,6 @@ diff --git a/tgc.h b/tgc.h
 |void tgc_set_flags(tgc_t *gc, void *ptr, int flags);
 
 ~~~ 139. calloc-opt
-diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
 @@ -320,6 +320,17 @@
@@ -717,7 +676,6 @@ diff --git a/tgc.c b/tgc.c
 |int tgc_get_flags(tgc_t *gc, void *ptr) {
 
 ~~~ 140. calloc
-diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
 @@ -312,6 +312,10 @@
@@ -733,7 +691,6 @@ diff --git a/tgc.c b/tgc.c
 |  if (ptr != NULL) {
 
 ~~~ 141. realloc-prototype
-diff --git a/tgc.h b/tgc.h
 --- a/tgc.h
 +++ b/tgc.h
 @@ -36,6 +36,7 @@
@@ -746,7 +703,6 @@ diff --git a/tgc.h b/tgc.h
 |void *tgc_calloc_opt(tgc_t *gc, size_t num, size_t size, int flags,
 
 ~~~ 142. realloc
-diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
 @@ -316,6 +316,28 @@
@@ -780,7 +736,6 @@ diff --git a/tgc.c b/tgc.c
 |  if (ptr != NULL) {
 
 ~~~ 143. rem
-diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
 @@ -308,6 +308,12 @@
@@ -798,7 +753,6 @@ diff --git a/tgc.c b/tgc.c
 |}
 
 ~~~ 144. rem-ptr
-diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
 @@ -54,6 +54,25 @@
@@ -829,7 +783,6 @@ diff --git a/tgc.c b/tgc.c
 |enum {
 
 ~~~ 145. rem-ptr-linear-probing-invariant
-diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
 @@ -55,7 +55,7 @@
@@ -862,7 +815,6 @@ diff --git a/tgc.c b/tgc.c
 |    }
 
 ~~~ 146. realloc-handle-realloc-failure
-diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
 @@ -357,6 +357,11 @@
@@ -879,7 +831,6 @@ diff --git a/tgc.c b/tgc.c
 |  if (p && qtr == ptr) {
 
 ~~~ 147. realloc-handle-null
-diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
 @@ -362,6 +362,11 @@
@@ -896,7 +847,6 @@ diff --git a/tgc.c b/tgc.c
 |  if (p && qtr == ptr) {
 
 ~~~ 148. free-prototype
-diff --git a/tgc.h b/tgc.h
 --- a/tgc.h
 +++ b/tgc.h
 @@ -37,6 +37,7 @@
@@ -909,7 +859,6 @@ diff --git a/tgc.h b/tgc.h
 |void *tgc_calloc_opt(tgc_t *gc, size_t num, size_t size, int flags,
 
 ~~~ 149. free
-diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
 @@ -385,6 +385,17 @@
@@ -932,7 +881,6 @@ diff --git a/tgc.c b/tgc.c
 |  if (ptr != NULL) {
 
 ~~~ 150. rem-ptr-frees-null
-diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
 @@ -59,6 +59,10 @@
@@ -948,7 +896,6 @@ diff --git a/tgc.c b/tgc.c
 |  while (1) {
 
 ~~~ 151. sweep-check-frees-for-null
-diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
 @@ -273,8 +273,10 @@

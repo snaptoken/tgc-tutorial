@@ -3,15 +3,12 @@
 ## The allocator
 
 ~~~ 1. Create `tgc.h` and declare `tgc_alloc()`
-diff --git a/tgc.h b/tgc.h
-new file mode 100644
 --- /dev/null
 +++ b/tgc.h
 @@ -0,0 +1,1 @@
 +void *tgc_alloc(size_t size);
 
 ~~~ 2. Include `<stdlib.h>` to get the `size_t` type
-diff --git a/tgc.h b/tgc.h
 --- a/tgc.h
 +++ b/tgc.h
 @@ -1,1 +1,3 @@
@@ -20,7 +17,6 @@ diff --git a/tgc.h b/tgc.h
 |void *tgc_alloc(size_t size);
 
 ~~~ 3. Wrap the header file in an [#include guard](https://en.wikipedia.org/wiki/Include_guard)
-diff --git a/tgc.h b/tgc.h
 --- a/tgc.h
 +++ b/tgc.h
 @@ -1,3 +1,8 @@
@@ -34,8 +30,6 @@ diff --git a/tgc.h b/tgc.h
 +#endif
 
 ~~~ 4. Create `tgc.c` and implement `tgc_alloc()` as a wrapper for `malloc()`
-diff --git a/tgc.c b/tgc.c
-new file mode 100644
 --- /dev/null
 +++ b/tgc.c
 @@ -0,0 +1,4 @@
@@ -45,7 +39,6 @@ new file mode 100644
 +}
 
 ~~~ 5. Include the header file
-diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
 @@ -1,3 +1,5 @@
@@ -56,7 +49,6 @@ diff --git a/tgc.c b/tgc.c
 |  return ptr;
 
 ~~~ 6. Add an "allocator functions" section
-diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
 @@ -1,5 +1,7 @@
@@ -71,7 +63,6 @@ diff --git a/tgc.c b/tgc.c
 ## Pointer table
 
 ~~~ 7. Add a `tgc_ptr_t` struct for storing metadata about an allocation
-diff --git a/tgc.h b/tgc.h
 --- a/tgc.h
 +++ b/tgc.h
 @@ -3,6 +3,10 @@
@@ -87,7 +78,6 @@ diff --git a/tgc.h b/tgc.h
 |#endif
 
 ~~~ 8. Add a `tgc_t` struct to keep track of all allocations and other global state
-diff --git a/tgc.h b/tgc.h
 --- a/tgc.h
 +++ b/tgc.h
 @@ -7,6 +7,11 @@
@@ -104,7 +94,6 @@ diff --git a/tgc.h b/tgc.h
 |#endif
 
 ~~~ 9. Declare `tgc_start()`
-diff --git a/tgc.h b/tgc.h
 --- a/tgc.h
 +++ b/tgc.h
 @@ -12,6 +12,8 @@
@@ -118,7 +107,6 @@ diff --git a/tgc.h b/tgc.h
 |#endif
 
 ~~~ 10. In `tgc_start()`, initialize an empty pointer table
-diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
 @@ -1,5 +1,13 @@
@@ -137,7 +125,6 @@ diff --git a/tgc.c b/tgc.c
 |void *tgc_alloc(size_t size) {
 
 ~~~ 11. Have `tgc_alloc()` prototype take global state
-diff --git a/tgc.h b/tgc.h
 --- a/tgc.h
 +++ b/tgc.h
 @@ -14,6 +14,6 @@
@@ -150,7 +137,6 @@ diff --git a/tgc.h b/tgc.h
 |#endif
 
 ~~~ 12. Have `tgc_alloc()` take global state
-diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
 @@ -10,7 +10,7 @@
@@ -164,7 +150,6 @@ diff --git a/tgc.c b/tgc.c
 |}
 
 ~~~ 13. In `tgc_alloc()`, call `tgc_add()` to remember the allocated pointer
-diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
 @@ -12,5 +12,6 @@
@@ -176,7 +161,6 @@ diff --git a/tgc.c b/tgc.c
 |}
 
 ~~~ 14. In `tgc_add()`, resize the pointer table and then add the pointer to it
-diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
 @@ -10,6 +10,12 @@
@@ -196,7 +180,6 @@ diff --git a/tgc.c b/tgc.c
 ## Growing the array
 
 ~~~ 15. In `tgc_resize()`, double the size of the pointer table (if needed)
-diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
 @@ -1,5 +1,14 @@
@@ -216,7 +199,6 @@ diff --git a/tgc.c b/tgc.c
 |void tgc_start(tgc_t *gc) {
 
 ~~~ 16. Copy the items in the old array to the new array
-diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
 @@ -3,10 +3,15 @@
@@ -237,7 +219,6 @@ diff --git a/tgc.c b/tgc.c
 |/*** gc control ***/
 
 ~~~ 17. Include `<string.h>` to get `memcpy()`
-diff --git a/tgc.h b/tgc.h
 --- a/tgc.h
 +++ b/tgc.h
 @@ -2,6 +2,7 @@
@@ -250,7 +231,6 @@ diff --git a/tgc.h b/tgc.h
 |  void *ptr;
 
 ~~~ 18. Free the old array
-diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
 @@ -12,6 +12,8 @@
@@ -266,7 +246,6 @@ diff --git a/tgc.c b/tgc.c
 ## Actually adding to the pointer table
 
 ~~~ 19. In `tgc_add_ptr()`, insert the pointer in the first empty array slot
-diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
 @@ -1,5 +1,21 @@
@@ -293,7 +272,6 @@ diff --git a/tgc.c b/tgc.c
 |static void tgc_resize(tgc_t *gc) {
 
 ~~~ 20. Prevent re-adding a pointer
-diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
 @@ -13,6 +13,7 @@
@@ -308,7 +286,6 @@ diff --git a/tgc.c b/tgc.c
 ## Error handling
 
 ~~~ 21. Check if `malloc()` returned `NULL` in `tgc_alloc()`
-diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
 @@ -51,6 +51,8 @@
@@ -323,7 +300,6 @@ diff --git a/tgc.c b/tgc.c
 |}
 
 ~~~ 22. Handle out-of-memory error in `tgc_resize()`
-diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
 @@ -19,18 +19,26 @@
@@ -357,7 +333,6 @@ diff --git a/tgc.c b/tgc.c
 |/*** gc control ***/
 
 ~~~ 23. Handle failure of `tgc_resize()` in `tgc_add()`
-diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
 @@ -51,10 +51,17 @@
@@ -383,7 +358,6 @@ diff --git a/tgc.c b/tgc.c
 |void *tgc_alloc(tgc_t *gc, size_t size) {
 
 ~~~ 24. Handle failure of `tgc_add()` in `tgc_alloc()`
-diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
 @@ -67,7 +67,7 @@
@@ -399,7 +373,6 @@ diff --git a/tgc.c b/tgc.c
 ## Sweep
 
 ~~~ 25. Write `tgc_sweep()` to free all pointers in the pointer table
-diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
 @@ -41,6 +41,19 @@
@@ -424,7 +397,6 @@ diff --git a/tgc.c b/tgc.c
 |void tgc_start(tgc_t *gc) {
 
 ~~~ 26. Skip the sweep phase when there are no allocations
-diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
 @@ -46,6 +46,8 @@
@@ -438,7 +410,6 @@ diff --git a/tgc.c b/tgc.c
 |    free(gc->items[i].ptr);
 
 ~~~ 27. Declare `tgc_stop()`
-diff --git a/tgc.h b/tgc.h
 --- a/tgc.h
 +++ b/tgc.h
 @@ -14,6 +14,7 @@
@@ -451,7 +422,6 @@ diff --git a/tgc.h b/tgc.h
 |
 
 ~~~ 28. Implement `tgc_stop()` to free all allocated memory, including the global state
-diff --git a/tgc.c b/tgc.c
 --- a/tgc.c
 +++ b/tgc.c
 @@ -64,6 +64,11 @@
