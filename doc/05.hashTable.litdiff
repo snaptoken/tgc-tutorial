@@ -603,3 +603,4 @@ diff --git a/tgc.c b/tgc.c
 |    if (ptr == gc->items[i].ptr) {
 |      if (gc->items[i].mark) { return; }
 |      gc->items[i].mark = 1;
+

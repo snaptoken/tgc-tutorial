@@ -242,3 +242,4 @@ diff --git a/tgc.c b/tgc.c
 |void tgc_run(tgc_t *gc) {
 |  tgc_mark(gc);
 |  tgc_sweep(gc);
+

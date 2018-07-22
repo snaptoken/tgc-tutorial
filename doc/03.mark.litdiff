@@ -382,3 +382,4 @@ diff --git a/tgc.c b/tgc.c
 |  for (i = 0; i < gc->nslots; i++) {
 |    if (ptr == gc->items[i].ptr) {
 |      if (gc->items[i].mark) { return; }
+
