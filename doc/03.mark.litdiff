@@ -1,8 +1,8 @@
 # Mark
 
 ~~~ 29. add-mark
---- a/tgc.h
-+++ b/tgc.h
+--- tgc.h
++++ tgc.h
 @@ -6,6 +6,7 @@
 |
 |typedef struct {
@@ -13,8 +13,8 @@
 |typedef struct {
 
 ~~~ 30. set-mark
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -7,6 +7,7 @@
 |  size_t i;
 |
@@ -25,8 +25,8 @@
 |    if (gc->items[i].ptr == NULL) {
 
 ~~~ 31. mark-ptr
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -44,6 +44,17 @@
 |
 |/*** mark and sweep ***/
@@ -47,8 +47,8 @@
 |
 
 ~~~ 32. add-bottom
---- a/tgc.h
-+++ b/tgc.h
+--- tgc.h
++++ tgc.h
 @@ -10,6 +10,7 @@
 |} tgc_ptr_t;
 |
@@ -59,8 +59,8 @@
 |} tgc_t;
 
 ~~~ 33. start-stk
---- a/tgc.h
-+++ b/tgc.h
+--- tgc.h
++++ tgc.h
 @@ -15,7 +15,7 @@
 |  size_t nitems, nslots;
 |} tgc_t;
@@ -72,8 +72,8 @@
 |void *tgc_alloc(tgc_t *gc, size_t size);
 
 ~~~ 34. set-bottom
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -70,7 +70,8 @@
 |
 |/*** gc control ***/
@@ -86,8 +86,8 @@
 |  gc->items = NULL;
 
 ~~~ 35. mark-stack
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -55,6 +55,15 @@
 |  }
 |}
@@ -106,8 +106,8 @@
 |
 
 ~~~ 36. mark-stack-handle-both-directions
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -59,8 +59,16 @@
 |  void *stk, *bot, *top, *p;
 |  bot = gc->bottom; top = &stk;
@@ -129,8 +129,8 @@
 |
 
 ~~~ 37. mark
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -72,6 +72,10 @@
 |  }
 |}
@@ -144,8 +144,8 @@
 |
 
 ~~~ 38. mark-return-early
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -73,6 +73,8 @@
 |}
 |
@@ -157,8 +157,8 @@
 |
 
 ~~~ 39. mark-volatile
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -73,9 +73,11 @@
 |}
 |
@@ -174,8 +174,8 @@
 |static void tgc_sweep(tgc_t *gc) {
 
 ~~~ 40. add-size
---- a/tgc.h
-+++ b/tgc.h
+--- tgc.h
++++ tgc.h
 @@ -7,6 +7,7 @@
 |typedef struct {
 |  void *ptr;
@@ -186,8 +186,8 @@
 |typedef struct {
 
 ~~~ 41. add-ptr-size
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -2,12 +2,13 @@
 |
 |/*** pointer table operations ***/
@@ -205,8 +205,8 @@
 |    if (gc->items[i].ptr == NULL) {
 
 ~~~ 42. add-pass-size
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -110,11 +110,11 @@
 |
 |/*** allocator functions ***/
@@ -223,8 +223,8 @@
 |    gc->nitems--;
 
 ~~~ 43. alloc-pass-size
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -126,7 +126,7 @@
 |void *tgc_alloc(tgc_t *gc, size_t size) {
 |  void *ptr = malloc(size);
@@ -236,8 +236,8 @@
 |}
 
 ~~~ 44. mark-heap
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -46,11 +46,14 @@
 |/*** mark and sweep ***/
 |
@@ -256,8 +256,8 @@
 |  }
 
 ~~~ 45. mark-ptr-avoid-infinite-recursion
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -50,6 +50,7 @@
 |
 |  for (i = 0; i < gc->nslots; i++) {
@@ -268,8 +268,8 @@
 |        tgc_mark_ptr(gc, ((void**)gc->items[i].ptr)[k]);
 
 ~~~ 46. mark-registers
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -78,10 +78,14 @@
 |}
 |
@@ -287,8 +287,8 @@
 |
 
 ~~~ 47. include-setjmp
---- a/tgc.h
-+++ b/tgc.h
+--- tgc.h
++++ tgc.h
 @@ -1,6 +1,7 @@
 |#ifndef TGC_H
 |#define TGC_H
@@ -299,8 +299,8 @@
 |
 
 ~~~ 48. add-minptr-maxptr
---- a/tgc.h
-+++ b/tgc.h
+--- tgc.h
++++ tgc.h
 @@ -2,6 +2,7 @@
 |#define TGC_H
 |
@@ -319,8 +319,8 @@
 |} tgc_t;
 
 ~~~ 49. init-minptr-maxptr
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -109,6 +109,8 @@
 |  gc->nitems = 0;
 |  gc->nslots = 0;
@@ -332,8 +332,8 @@
 |void tgc_stop(tgc_t *gc) {
 
 ~~~ 50. set-minptr-maxptr
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -122,6 +122,10 @@
 |
 |static void *tgc_add(tgc_t *gc, void *ptr, size_t size) {
@@ -347,8 +347,8 @@
 |    tgc_add_ptr(gc, ptr, size);
 
 ~~~ 51. use-minptr-maxptr
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -48,6 +48,9 @@
 |static void tgc_mark_ptr(tgc_t *gc, void *ptr) {
 |  size_t i, k;

@@ -1,8 +1,8 @@
 # Hash Table
 
 ~~~ 69. hash
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -2,6 +2,10 @@
 |
 |/*** pointer table operations ***/
@@ -16,8 +16,8 @@
 |  size_t i;
 
 ~~~ 70. add-ptr-use-hash
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -10,16 +10,19 @@
 |  tgc_ptr_t item;
 |  size_t i;
@@ -41,8 +41,8 @@
 |
 
 ~~~ 71. mark-ptr-use-hash
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -53,12 +53,15 @@
 |/*** mark and sweep ***/
 |
@@ -71,8 +71,8 @@
 |
 
 ~~~ 72. resize-readd-ptrs
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -29,6 +29,7 @@
 |/*** resize pointer table ***/
 |
@@ -96,8 +96,8 @@
 |
 
 ~~~ 73. add-loadfactor
---- a/tgc.h
-+++ b/tgc.h
+--- tgc.h
++++ tgc.h
 @@ -17,7 +17,7 @@
 |  int paused;
 |  uintptr_t minptr, maxptr;
@@ -109,8 +109,8 @@
 |
 
 ~~~ 74. init-loadfactor
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -139,6 +139,7 @@
 |  gc->items = NULL;
 |  gc->minptr = UINTPTR_MAX;
@@ -121,8 +121,8 @@
 |
 
 ~~~ 75. ideal-size
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -28,6 +28,10 @@
 |
 |/*** resize pointer table ***/
@@ -136,8 +136,8 @@
 |  tgc_ptr_t *old_items = gc->items;
 
 ~~~ 76. resize-more
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -59,6 +59,12 @@
 |  return 1;
 |}
@@ -153,8 +153,8 @@
 |static void tgc_mark_ptr(tgc_t *gc, void *ptr) {
 
 ~~~ 77. rehash
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -32,14 +32,12 @@
 |  return (size_t)((double)(size+1) / gc->loadfactor);
 |}
@@ -174,8 +174,8 @@
 |  if (gc->items == NULL) {
 
 ~~~ 78. use-resize-more
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -178,7 +178,7 @@
 |  gc->minptr = ((uintptr_t)ptr)        < gc->minptr ?
 |    ((uintptr_t)ptr)        : gc->minptr;
@@ -187,8 +187,8 @@
 |      tgc_run(gc);
 
 ~~~ 79. add-primes
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -28,6 +28,19 @@
 |
 |/*** resize pointer table ***/
@@ -211,8 +211,8 @@
 |}
 
 ~~~ 80. use-primes
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -42,7 +42,12 @@
 |};
 |
@@ -229,8 +229,8 @@
 |static int tgc_rehash(tgc_t *gc, size_t new_size) {
 
 ~~~ 81. fix-large-sizes
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -42,11 +42,15 @@
 |};
 |
@@ -250,8 +250,8 @@
 |
 
 ~~~ 82. resize-less
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -85,6 +85,12 @@
 |  return (new_size > old_size) ? tgc_rehash(gc, new_size) : 1;
 |}
@@ -267,8 +267,8 @@
 |static void tgc_mark_ptr(tgc_t *gc, void *ptr) {
 
 ~~~ 83. call-resize-less
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -161,6 +161,8 @@
 |    gc->items[i].mark = 0;
 |  }
@@ -280,8 +280,8 @@
 |
 
 ~~~ 84. sweep-while-loop
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -149,9 +149,10 @@
 |
 |  if (gc->nitems == 0) { return; }
@@ -298,8 +298,8 @@
 |    gc->nitems--;
 
 ~~~ 85. linear-probing-invariant
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -145,7 +145,7 @@
 |}
 |
@@ -334,8 +334,8 @@
 |
 
 ~~~ 86. mark-ptr-stop-search-early
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -102,7 +102,7 @@
 |  i = tgc_hash(ptr) % gc->nslots; j = 0;
 |
@@ -347,8 +347,8 @@
 |      gc->items[i].mark = 1;
 
 ~~~ 87. add-hash
---- a/tgc.h
-+++ b/tgc.h
+--- tgc.h
++++ tgc.h
 @@ -9,7 +9,7 @@
 |typedef struct {
 |  void *ptr;
@@ -360,8 +360,8 @@
 |typedef struct {
 
 ~~~ 88. set-hash
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -15,6 +15,7 @@
 |  item.ptr = ptr;
 |  item.mark = 0;
@@ -372,8 +372,8 @@
 |    if (gc->items[i].ptr == NULL) {
 
 ~~~ 89. add-ptr-hash-zero
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -8,7 +8,7 @@
 |
 |static void tgc_add_ptr(tgc_t *gc, void *ptr, size_t size) {
@@ -398,8 +398,8 @@
 |  }
 
 ~~~ 90. rehash-hash-zero
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -68,7 +68,7 @@
 |  }
 |
@@ -411,8 +411,8 @@
 |  }
 
 ~~~ 91. mark-ptr-hash-zero
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -93,7 +93,7 @@
 |/*** mark and sweep ***/
 |
@@ -434,8 +434,8 @@
 |      gc->items[i].mark = 1;
 
 ~~~ 92. sweep-hash-zero
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -151,8 +151,8 @@
 |
 |  i = 0;
@@ -460,8 +460,8 @@
 |        j = nj;
 
 ~~~ 93. probe
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -6,6 +6,12 @@
 |  return ((uintptr_t)ptr) >> 3;
 |}
@@ -477,8 +477,8 @@
 |  size_t i, h;
 
 ~~~ 94. sweep-robin-hood
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -167,7 +167,7 @@
 |    while (1) {
 |      nj = (j+1) % gc->nslots;
@@ -490,8 +490,8 @@
 |        j = nj;
 
 ~~~ 95. add-ptr-count-iterations
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -14,9 +14,9 @@
 |
 |static void tgc_add_ptr(tgc_t *gc, void *ptr, size_t size) {
@@ -515,8 +515,8 @@
 |
 
 ~~~ 96. add-ptr-probe
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -14,7 +14,7 @@
 |
 |static void tgc_add_ptr(tgc_t *gc, void *ptr, size_t size) {
@@ -536,8 +536,8 @@
 |}
 
 ~~~ 97. add-ptr-robin-hood
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -13,7 +13,7 @@
 |}
 |
@@ -562,8 +562,8 @@
 |}
 
 ~~~ 98. mark-ptr-robin-hood
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -115,7 +115,7 @@
 |
 |  while (1) {

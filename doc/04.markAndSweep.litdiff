@@ -1,8 +1,8 @@
 # Mark and Sweep
 
 ~~~ 52. sweep-unmarked
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -99,6 +99,7 @@
 |
 |  for (i = 0; i < gc->nslots; i++) {
@@ -13,8 +13,8 @@
 |    gc->nitems--;
 
 ~~~ 53. sweep-reset-mark
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -104,6 +104,10 @@
 |    memset(&gc->items[i], 0, sizeof(tgc_ptr_t));
 |    gc->nitems--;
@@ -28,8 +28,8 @@
 |/*** gc control ***/
 
 ~~~ 54. run-prototype
---- a/tgc.h
-+++ b/tgc.h
+--- tgc.h
++++ tgc.h
 @@ -21,6 +21,7 @@
 |
 |void tgc_start(tgc_t *gc, void *stk);
@@ -40,8 +40,8 @@
 |
 
 ~~~ 55. run
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -126,6 +126,11 @@
 |  free(gc->items);
 |}
@@ -56,8 +56,8 @@
 |static void *tgc_add(tgc_t *gc, void *ptr, size_t size) {
 
 ~~~ 56. collect-on-alloc
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -142,6 +142,7 @@
 |
 |  if (tgc_resize(gc)) {
@@ -68,8 +68,8 @@
 |    gc->nitems--;
 
 ~~~ 57. add-mitems
---- a/tgc.h
-+++ b/tgc.h
+--- tgc.h
++++ tgc.h
 @@ -16,7 +16,7 @@
 |  void *bottom;
 |  uintptr_t minptr, maxptr;
@@ -81,8 +81,8 @@
 |void tgc_start(tgc_t *gc, void *stk);
 
 ~~~ 58. init-mitems
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -116,6 +116,7 @@
 |  gc->bottom = stk;
 |  gc->nitems = 0;
@@ -93,8 +93,8 @@
 |  gc->maxptr = 0;
 
 ~~~ 59. set-mitems
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -108,6 +108,8 @@
 |  for (i = 0; i < gc->nslots; i++) {
 |    gc->items[i].mark = 0;
@@ -106,8 +106,8 @@
 |/*** gc control ***/
 
 ~~~ 60. use-mitems
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -145,7 +145,9 @@
 |
 |  if (tgc_resize(gc)) {
@@ -121,8 +121,8 @@
 |    gc->nitems--;
 
 ~~~ 61. add-sweepfactor
---- a/tgc.h
-+++ b/tgc.h
+--- tgc.h
++++ tgc.h
 @@ -16,6 +16,7 @@
 |  void *bottom;
 |  uintptr_t minptr, maxptr;
@@ -133,8 +133,8 @@
 |
 
 ~~~ 62. set-sweepfactor
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -122,6 +122,7 @@
 |  gc->items = NULL;
 |  gc->minptr = UINTPTR_MAX;
@@ -145,8 +145,8 @@
 |void tgc_stop(tgc_t *gc) {
 
 ~~~ 63. use-sweepfactor
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -109,7 +109,7 @@
 |    gc->items[i].mark = 0;
 |  }
@@ -158,8 +158,8 @@
 |/*** gc control ***/
 
 ~~~ 64. add-paused
---- a/tgc.h
-+++ b/tgc.h
+--- tgc.h
++++ tgc.h
 @@ -14,6 +14,7 @@
 |
 |typedef struct {
@@ -170,8 +170,8 @@
 |  double sweepfactor;
 
 ~~~ 65. init-paused
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -116,6 +116,7 @@
 |
 |void tgc_start(tgc_t *gc, void *stk) {
@@ -182,8 +182,8 @@
 |  gc->mitems = 0;
 
 ~~~ 66. use-paused
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -147,7 +147,7 @@
 |
 |  if (tgc_resize(gc)) {
@@ -195,8 +195,8 @@
 |    return ptr;
 
 ~~~ 67. pause-resume-prototypes
---- a/tgc.h
-+++ b/tgc.h
+--- tgc.h
++++ tgc.h
 @@ -23,6 +23,8 @@
 |
 |void tgc_start(tgc_t *gc, void *stk);
@@ -208,8 +208,8 @@
 |void *tgc_alloc(tgc_t *gc, size_t size);
 
 ~~~ 68. pause-resume
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -131,6 +131,14 @@
 |  free(gc->items);
 |}

@@ -1,8 +1,8 @@
 # Extra Features
 
 ~~~ 99. change-mark-to-flags
---- a/tgc.h
-+++ b/tgc.h
+--- tgc.h
++++ tgc.h
 @@ -6,9 +6,13 @@
 |#include <stdlib.h>
 |#include <string.h>
@@ -20,8 +20,8 @@
 |
 
 ~~~ 100. add-ptr-flags
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -12,14 +12,14 @@
 |  return v;
 |}
@@ -41,8 +41,8 @@
 |
 
 ~~~ 101. rehash-flags
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -82,7 +82,7 @@
 |
 |  for (i = 0; i < old_size; i++) {
@@ -54,8 +54,8 @@
 |
 
 ~~~ 102. add-flags
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -229,7 +229,7 @@
 |
 |/*** allocator functions ***/
@@ -76,8 +76,8 @@
 |    }
 
 ~~~ 103. zero-flags
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -252,7 +252,7 @@
 |void *tgc_alloc(tgc_t *gc, size_t size) {
 |  void *ptr = malloc(size);
@@ -89,8 +89,8 @@
 |}
 
 ~~~ 104. mark-ptr-flags
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -117,8 +117,8 @@
 |    h = gc->items[i].hash;
 |    if (h == 0 || j > tgc_probe(gc, i, h)) { return; }
@@ -104,8 +104,8 @@
 |      }
 
 ~~~ 105. sweep-flags
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -164,8 +164,8 @@
 |
 |  i = 0;
@@ -119,8 +119,8 @@
 |    memset(&gc->items[i], 0, sizeof(tgc_ptr_t));
 
 ~~~ 106. sweep-reset-mark-flag
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -186,7 +186,7 @@
 |  }
 |
@@ -132,8 +132,8 @@
 |  tgc_resize_less(gc);
 
 ~~~ 107. add-root-flag
---- a/tgc.h
-+++ b/tgc.h
+--- tgc.h
++++ tgc.h
 @@ -7,7 +7,8 @@
 |#include <string.h>
 |
@@ -146,8 +146,8 @@
 |typedef struct {
 
 ~~~ 108. mark-roots
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -146,12 +146,24 @@
 |}
 |
@@ -175,8 +175,8 @@
 |  mark_stack(gc);
 
 ~~~ 109. sweep-skip-roots
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -178,6 +178,7 @@
 |  while (i < gc->nslots) {
 |    if (gc->items[i].hash ==        0) { i++; continue; }
@@ -187,8 +187,8 @@
 |    memset(&gc->items[i], 0, sizeof(tgc_ptr_t));
 
 ~~~ 110. alloc-opt-prototype
---- a/tgc.h
-+++ b/tgc.h
+--- tgc.h
++++ tgc.h
 @@ -34,4 +34,6 @@
 |
 |void *tgc_alloc(tgc_t *gc, size_t size);
@@ -198,8 +198,8 @@
 |#endif
 
 ~~~ 111. alloc-opt
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -262,10 +262,10 @@
 |  }
 |}
@@ -215,8 +215,8 @@
 |}
 
 ~~~ 112. alloc-delegates
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -262,6 +262,10 @@
 |  }
 |}
@@ -230,8 +230,8 @@
 |  if (ptr != NULL) {
 
 ~~~ 113. get-set-flags-prototypes
---- a/tgc.h
-+++ b/tgc.h
+--- tgc.h
++++ tgc.h
 @@ -36,4 +36,7 @@
 |
 |void *tgc_alloc_opt(tgc_t *gc, size_t size, int flags);
@@ -242,8 +242,8 @@
 |#endif
 
 ~~~ 114. get-set-flags
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -273,3 +273,16 @@
 |  }
 |  return ptr;
@@ -263,8 +263,8 @@
 +}
 
 ~~~ 115. get-ptr
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -12,6 +12,18 @@
 |  return v;
 |}
@@ -286,8 +286,8 @@
 |  size_t i, j, h, p;
 
 ~~~ 116. get-size-prototype
---- a/tgc.h
-+++ b/tgc.h
+--- tgc.h
++++ tgc.h
 @@ -38,5 +38,6 @@
 |
 |int tgc_get_flags(tgc_t *gc, void *ptr);
@@ -297,8 +297,8 @@
 |#endif
 
 ~~~ 117. get-size
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -298,3 +298,9 @@
 |  tgc_ptr_t *p = tgc_get_ptr(gc, ptr);
 |  if (p) { p->flags = flags; }
@@ -311,8 +311,8 @@
 +}
 
 ~~~ 118. add-leaf-flag
---- a/tgc.h
-+++ b/tgc.h
+--- tgc.h
++++ tgc.h
 @@ -8,7 +8,8 @@
 |
 |enum {
@@ -325,8 +325,8 @@
 |typedef struct {
 
 ~~~ 119. mark-ptr-leaf
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -131,6 +131,7 @@
 |    if (ptr == gc->items[i].ptr) {
 |      if (gc->items[i].flags & TGC_MARK) { return; }
@@ -337,8 +337,8 @@
 |      }
 
 ~~~ 120. mark-leaf
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -171,6 +171,7 @@
 |    if (gc->items[i].flags & TGC_MARK) { continue; }
 |    if (gc->items[i].flags & TGC_ROOT) {
@@ -349,8 +349,8 @@
 |      }
 
 ~~~ 121. add-dtor
---- a/tgc.h
-+++ b/tgc.h
+--- tgc.h
++++ tgc.h
 @@ -16,6 +16,7 @@
 |  void *ptr;
 |  int flags;
@@ -361,8 +361,8 @@
 |typedef struct {
 
 ~~~ 122. alloc-opt-dtor-prototype
---- a/tgc.h
-+++ b/tgc.h
+--- tgc.h
++++ tgc.h
 @@ -36,7 +36,7 @@
 |
 |void *tgc_alloc(tgc_t *gc, size_t size);
@@ -374,8 +374,8 @@
 |void tgc_set_flags(tgc_t *gc, void *ptr, int flags);
 
 ~~~ 123. alloc-opt-dtor
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -280,10 +280,10 @@
 |  return tgc_alloc_opt(gc, size, 0);
 |}
@@ -391,8 +391,8 @@
 |}
 
 ~~~ 124. alloc-dtor
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -277,7 +277,7 @@
 |}
 |
@@ -404,8 +404,8 @@
 |void *tgc_alloc_opt(tgc_t *gc, size_t size, int flags, void(*dtor)(void*)) {
 
 ~~~ 125. add-pass-dtor
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -256,7 +256,10 @@
 |
 |/*** allocator functions ***/
@@ -429,8 +429,8 @@
 |    }
 
 ~~~ 126. set-dtor
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -24,7 +24,10 @@
 |  return NULL;
 |}
@@ -453,8 +453,8 @@
 |    h = gc->items[i].hash;
 
 ~~~ 127. rehash-dtor
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -98,7 +98,9 @@
 |
 |  for (i = 0; i < old_size; i++) {
@@ -468,8 +468,8 @@
 |
 
 ~~~ 128. get-set-dtor-prototypes
---- a/tgc.h
-+++ b/tgc.h
+--- tgc.h
++++ tgc.h
 @@ -40,6 +40,8 @@
 |
 |int tgc_get_flags(tgc_t *gc, void *ptr);
@@ -481,8 +481,8 @@
 |#endif
 
 ~~~ 129. get-set-dtor
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -310,6 +310,17 @@
 |  if (p) { p->flags = flags; }
 |}
@@ -503,8 +503,8 @@
 |  if (p) { return p->size; }
 
 ~~~ 130. add-frees
---- a/tgc.h
-+++ b/tgc.h
+--- tgc.h
++++ tgc.h
 @@ -23,9 +23,9 @@
 |  void *bottom;
 |  int paused;
@@ -519,8 +519,8 @@
 |void tgc_start(tgc_t *gc, void *stk);
 
 ~~~ 131. init-frees
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -235,7 +235,9 @@
 |  gc->nitems = 0;
 |  gc->nslots = 0;
@@ -533,8 +533,8 @@
 |  gc->loadfactor = 0.9;
 
 ~~~ 132. stop-frees
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -247,6 +247,7 @@
 |void tgc_stop(tgc_t *gc) {
 |  tgc_sweep(gc);
@@ -545,8 +545,8 @@
 |void tgc_pause(tgc_t *gc) {
 
 ~~~ 133. sweep-count-frees
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -194,6 +194,14 @@
 |
 |  if (gc->nitems == 0) { return; }
@@ -564,8 +564,8 @@
 |    if (gc->items[i].hash ==        0) { i++; continue; }
 
 ~~~ 134. sweep-alloc-frees
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -202,6 +202,9 @@
 |    gc->nfrees++;
 |  }
@@ -578,8 +578,8 @@
 |    if (gc->items[i].hash ==        0) { i++; continue; }
 
 ~~~ 135. sweep-add-to-frees
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -190,7 +190,7 @@
 |}
 |
@@ -607,8 +607,8 @@
 |    j = i;
 
 ~~~ 136. sweep-free-frees
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -236,6 +236,11 @@
 |  tgc_resize_less(gc);
 |
@@ -623,8 +623,8 @@
 |/*** gc control ***/
 
 ~~~ 137. sweep-cleanup-frees
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -241,6 +241,10 @@
 |    if (gc->frees[i].dtor) { gc->frees[i].dtor(gc->frees[i].ptr); }
 |    free(gc->frees[i].ptr);
@@ -638,8 +638,8 @@
 |/*** gc control ***/
 
 ~~~ 138. calloc-prototypes
---- a/tgc.h
-+++ b/tgc.h
+--- tgc.h
++++ tgc.h
 @@ -35,8 +35,11 @@
 |void tgc_run(tgc_t *gc);
 |
@@ -654,8 +654,8 @@
 |void tgc_set_flags(tgc_t *gc, void *ptr, int flags);
 
 ~~~ 139. calloc-opt
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -320,6 +320,17 @@
 |  return ptr;
 |}
@@ -676,8 +676,8 @@
 |int tgc_get_flags(tgc_t *gc, void *ptr) {
 
 ~~~ 140. calloc
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -312,6 +312,10 @@
 |  return tgc_alloc_opt(gc, size, 0, NULL);
 |}
@@ -691,8 +691,8 @@
 |  if (ptr != NULL) {
 
 ~~~ 141. realloc-prototype
---- a/tgc.h
-+++ b/tgc.h
+--- tgc.h
++++ tgc.h
 @@ -36,6 +36,7 @@
 |
 |void *tgc_alloc(tgc_t *gc, size_t size);
@@ -703,8 +703,8 @@
 |void *tgc_calloc_opt(tgc_t *gc, size_t num, size_t size, int flags,
 
 ~~~ 142. realloc
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -316,6 +316,28 @@
 |  return tgc_calloc_opt(gc, num, size, 0, NULL);
 |}
@@ -736,8 +736,8 @@
 |  if (ptr != NULL) {
 
 ~~~ 143. rem
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -308,6 +308,12 @@
 |  }
 |}
@@ -753,8 +753,8 @@
 |}
 
 ~~~ 144. rem-ptr
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -54,6 +54,25 @@
 |  }
 |}
@@ -783,8 +783,8 @@
 |enum {
 
 ~~~ 145. rem-ptr-linear-probing-invariant
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -55,7 +55,7 @@
 |}
 |
@@ -815,8 +815,8 @@
 |    }
 
 ~~~ 146. realloc-handle-realloc-failure
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -357,6 +357,11 @@
 |  tgc_ptr_t *p;
 |  void *qtr = realloc(ptr, size);
@@ -831,8 +831,8 @@
 |  if (p && qtr == ptr) {
 
 ~~~ 147. realloc-handle-null
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -362,6 +362,11 @@
 |    return qtr;
 |  }
@@ -847,8 +847,8 @@
 |  if (p && qtr == ptr) {
 
 ~~~ 148. free-prototype
---- a/tgc.h
-+++ b/tgc.h
+--- tgc.h
++++ tgc.h
 @@ -37,6 +37,7 @@
 |void *tgc_alloc(tgc_t *gc, size_t size);
 |void *tgc_calloc(tgc_t *gc, size_t num, size_t size);
@@ -859,8 +859,8 @@
 |void *tgc_calloc_opt(tgc_t *gc, size_t num, size_t size, int flags,
 
 ~~~ 149. free
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -385,6 +385,17 @@
 |  return NULL;
 |}
@@ -881,8 +881,8 @@
 |  if (ptr != NULL) {
 
 ~~~ 150. rem-ptr-frees-null
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -59,6 +59,10 @@
 |
 |  if (gc->nitems == 0) { return; }
@@ -896,8 +896,8 @@
 |  while (1) {
 
 ~~~ 151. sweep-check-frees-for-null
---- a/tgc.c
-+++ b/tgc.c
+--- tgc.c
++++ tgc.c
 @@ -273,8 +273,10 @@
 |  gc->mitems = gc->nitems + (size_t)(gc->nitems * gc->sweepfactor) + 1;
 |
