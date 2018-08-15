@@ -1,6 +1,30 @@
 # One Fell Sweep
 
+In C, you have to manage your memory *manually*. You call `malloc()` to allocate
+a block of memory, and when you are done with it you must `free()` it. This is
+very tricky to do properly in large programs. The bugs that arise from manual
+memory management tend to be disastrous and hard to track down.
+
+`tgc` is a garbage collector (**T**iny **G**arbage **C**ollector). The purpose
+of a garbage collector is to `free()` your memory for you, *automatically*. C
+programs that use a garbage collector only have to call the allocator function,
+and don't have to worry about when to free the memory.
+
+In this chapter, we'll create an allocator function called `tgc_alloc()`. We
+will keep track of each piece of memory that is allocated through this function.
+When the garbage collector is stopped using `tgc_stop()`, we will `free()` all
+of the memory that was allocated through `tgc_alloc()`.
+
+It's a very basic start to building a mark and sweep garbage collector: freeing
+all the memory at the end, in "one fell sweep". But it lays a foundation for the
+next chapters, in which we'll build a proper mark phase and sweep phase for our
+garbage collector.
+
 ## The allocator
+
+`tgc` will consist of only two files: the source file (`tgc.c`) and the header
+file (`tgc.h`). We'll start by creating both of these files, and implementing
+the `tgc_alloc()` function as a wrapper for `malloc()`.
 
 ~~~ 1. Create `tgc.h` and declare `tgc_alloc()`
 --- /dev/null
@@ -61,6 +85,12 @@
 |  return ptr;
 
 ## Pointer table
+
+We'll need to keep track of each memory allocation made through `tgc_alloc()`.
+We'll store each pointer, along with its associated metadata, in a pointer
+table. For now, this will be a dynamically growing array of `tgc_ptr_t` structs.
+The array will be stored in a global state struct called `tgc_t`, which will be
+passed as the first argument to every function in our library.
 
 ~~~ 7. Add a `tgc_ptr_t` struct for storing metadata about an allocation
 --- tgc.h
