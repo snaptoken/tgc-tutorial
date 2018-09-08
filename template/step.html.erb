@@ -3,37 +3,50 @@
     <%= number %>
   </div>
 
-  <% for diff in diffs %>
-    <% diff = Leg::DiffTransformers::SyntaxHighlight.new.transform(diff) %>
-    <div class="diff">
-      <div class="diff-header">
-        <div class="diff-summary">
-          <%= markdown(summary) %>
+  <div class="step-diffs">
+    <% for diff in diffs %>
+      <% diff = Leg::DiffTransformers::SyntaxHighlight.new.transform(diff) %>
+      <div class="diff">
+        <div class="diff-header">
+          <div class="diff-summary">
+            <span class="diff-step-number">
+              <%= number %>.
+            </span>
+            <%= markdown(summary) %>
+          </div>
+          <div class="diff-filename">
+            <a href="https://github.com/snaptoken/<%= name %>-src/blob/step-<%= number %>/<%= diff.filename %>">
+              <%= diff.filename %>
+            </a>
+          </div>
         </div>
-        <div class="diff-filename">
-          <a href="https://github.com/snaptoken/<%= name %>-src/blob/step-<%= number %>/<%= diff.filename %>">
-            <%= diff.filename %>
-          </a>
+        <div class="diff-code">
+          <table>
+            <tr class="diff-before">
+              <td class="line-number"></td>
+              <td class="line"></td>
+            </tr>
+          <% for line in diff.lines %>
+            <tr>
+              <td class="line-number">
+                <%= line.line_number %>
+              </td>
+              <td class="line <%= diff.is_new_file ? :unchanged : line.type %>">\\
+                <% if line.type == :folded %>\\
+                  <%= line.source.gsub('<span class="err">…</span>', '…') %>\\
+                <% else %>\\
+                  <%= line.source %>\\
+                <% end %>\\
+              </td>
+            </tr>
+          <% end %>
+            <tr class="diff-after">
+              <td class="line-number"></td>
+              <td class="line"></td>
+            </tr>
+          </table>
         </div>
       </div>
-      <div class="diff-code">
-        <table>
-        <% for line in diff.lines %>
-          <tr>
-            <td class="line-number">
-              <%= line.line_number %>
-            </td>
-            <td class="line <%= diff.is_new_file ? :unchanged : line.type %>">\\
-              <% if line.type == :folded %>\\
-                <%= line.source.gsub('<span class="err">…</span>', '…') %>\\
-              <% else %>\\
-                <%= line.source %>\\
-              <% end %>\\
-            </td>
-          </tr>
-        <% end %>
-        </table>
-      </div>
-    </div>
-  <% end %>
+    <% end %>
+  </div>
 </div>

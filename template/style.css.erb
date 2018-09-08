@@ -195,6 +195,7 @@ code {
   white-space: nowrap;
   background-color: #eff4ea;
   padding: 1px 3px;
+  border-radius: 5px;
 }
 
 h1 code, h2 code, h3 code, h4 code, h5 code, h6 code {
@@ -219,18 +220,23 @@ h1 kbd, h2 kbd, h3 kbd, h4 kbd, h5 kbd, h6 kbd {
 }
 
 .step {
+  display: flex;
   margin-top: 18px;
+  width: 850px;
+  margin-left: -100px;
 }
 
 .step-number {
-  position: absolute;
-  margin-top: -6px;
-  margin-left: -148px;
   font-size: 48px;
   font-family: Helvetica;
-  line-height: 130%;
-  width: 128px;
+  line-height: 100%;
+  width: 100px;
+  padding-right: 15px;
   text-align: right;
+}
+
+.step-diffs {
+  width: 750px;
 }
 
 .diff {
@@ -241,24 +247,32 @@ h1 kbd, h2 kbd, h3 kbd, h4 kbd, h5 kbd, h6 kbd {
 .diff .diff-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  padding: 7px 10px;
+  align-items: baseline;
+  padding: 6px 10px;
   background-color: #fafbfc;
   border-bottom: 1px solid #ede7e3;
-  font-size: 16px;
+  font-size: 18px;
+  line-height: 120%;
+  color: #666;
 }
 
-.diff .diff-summary {
-  color: #666;
-  font-size: 18px;
+.diff .diff-step-number {
+  display: none;
+  font-weight: bold;
+  font-family: Helvetica;
 }
 
 .diff .diff-summary p {
+  display: inline;
   margin-top: 0;
 }
 
+.diff .diff-filename {
+  margin-left: 10px;
+}
+
 .diff .diff-filename a {
-  color: #666;
+  color: inherit;
   font-weight: bold;
 }
 
@@ -277,11 +291,16 @@ h1 kbd, h2 kbd, h3 kbd, h4 kbd, h5 kbd, h6 kbd {
   font-size: 14px;
 }
 
+tr.diff-before, tr.diff-after {
+  height: 7px;
+}
+
 .diff td.line-number {
   width: 1%;
   min-width: 55px;
   text-align: right;
-  padding-right: 15px;
+  padding-right: 10px;
+  border-right: 1px solid #ede7e3;
   background-color: #fafbfc;
   color: #ccc;
 }
@@ -290,7 +309,7 @@ h1 kbd, h2 kbd, h3 kbd, h4 kbd, h5 kbd, h6 kbd {
   white-space: pre;
   position: relative;
   background-color: inherit;
-  padding-left: 5px;
+  padding-left: 7px;
 }
 
 .diff td.line.folded {
@@ -332,7 +351,7 @@ h1 kbd, h2 kbd, h3 kbd, h4 kbd, h5 kbd, h6 kbd {
   top: 0;
 }
 
-@media screen and (max-width: 700px) {
+@media screen and (max-width: 900px) {
   #container {
     width: auto;
     margin: 18px 0;
@@ -343,6 +362,23 @@ h1 kbd, h2 kbd, h3 kbd, h4 kbd, h5 kbd, h6 kbd {
     width: auto;
     margin: 0;
     padding: 0 5px;
+  }
+
+  .step {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .step-diffs {
+    width: 100%;
+  }
+
+  .step-number {
+    display: none;
+  }
+
+  .diff .diff-step-number {
+    display: inline;
   }
 
   .diff .diff-code {
