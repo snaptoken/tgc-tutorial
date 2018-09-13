@@ -27,11 +27,11 @@
               <td class="line"></td>
             </tr>
           <% for line in diff.lines %>
-            <tr>
+            <tr class="<%= diff.is_new_file ? :unchanged : line.type %>">
               <td class="line-number">
-                <%= line.line_number %>
+                <%= line.line_number unless line.type == :removed %>
               </td>
-              <td class="line <%= diff.is_new_file ? :unchanged : line.type %>">\\
+              <td class="line">\\
                 <% if line.type == :folded %>\\
                   <%= line.source.gsub('<span class="err">…</span>', '…') %>\\
                 <% else %>\\

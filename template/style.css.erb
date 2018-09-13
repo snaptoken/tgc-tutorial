@@ -302,7 +302,7 @@ tr.diff-before, tr.diff-after {
   padding-right: 10px;
   border-right: 1px solid #ede7e3;
   background-color: #fafbfc;
-  color: #ccc;
+  color: #bbb;
 }
 
 .diff td.line {
@@ -312,17 +312,25 @@ tr.diff-before, tr.diff-after {
   padding-left: 7px;
 }
 
-.diff td.line.folded {
+.diff tr.folded td.line {
   background-color: #eef;
   opacity: 0.5;
 }
 
-.diff td.line.added {
+.diff tr.folded td.line-number {
+  background-color: #eef;
+}
+
+.diff tr.added td.line {
   background-color: #ffd;
   text-decoration: none;
 }
 
-.diff td.line.added::after {
+.diff tr.added td.line-number {
+  background-color: #ffc;
+}
+
+.diff tr.added td.line::after {
   display: block;
   content: '';
   width: 20px;
@@ -334,12 +342,16 @@ tr.diff-before, tr.diff-after {
   top: 0;
 }
 
-.diff td.line.removed {
+.diff tr.removed td.line {
   background-color: #fdd;
   text-decoration: line-through;
 }
 
-.diff td.line.removed::after {
+.diff tr.removed td.line-number {
+  background-color: #fcc;
+}
+
+.diff tr.removed td.line::after {
   display: block;
   content: '';
   width: 20px;
@@ -389,7 +401,7 @@ tr.diff-before, tr.diff-after {
     width: 700px;
   }
 
-  .diff td.line.added::after, .diff td.line.removed::after {
+  .diff tr.added td.line::after, .diff tr.removed td.line::after {
     display: none;
   }
 }
