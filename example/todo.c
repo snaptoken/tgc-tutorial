@@ -4,8 +4,8 @@
 #include <string.h>
 
 typedef struct TodoItem {
-  struct TodoItem* next;
   char* name;
+  struct TodoItem* next;
 } TodoItem;
 
 void todo_print(TodoItem* todo) {
@@ -34,7 +34,10 @@ TodoItem* todo_add(TodoItem* todo, const char* name) {
 
 TodoItem* todo_remove(TodoItem* todo, int index) {
   if (index == 1 && todo) {
-    return todo->next; // memory leak!
+    TodoItem* next = todo->next;
+    free(todo->name);
+    free(todo);
+    return next;
   }
 
   int id = 1;
@@ -58,7 +61,13 @@ TodoItem* todo_remove(TodoItem* todo, int index) {
 
 TodoItem* todo_snip(TodoItem* todo, int index) {
   if (index < 2) {
-    return NULL; // memory leak!
+    while (todo) {
+      TodoItem* to_delete = todo;
+      todo = todo->next;
+      free(to_delete->name);
+      free(to_delete);
+    }
+    return NULL;
   }
 
   int id = 1;

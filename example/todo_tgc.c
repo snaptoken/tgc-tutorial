@@ -2,13 +2,23 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "tgc.h"
 
-void* (*tgc_alloc)(size_t) = malloc;
+static tgc_t gc;
 
 typedef struct TodoItem {
-  struct TodoItem* next;
   char* name;
+  struct TodoItem* next;
 } TodoItem;
+
+void pretty_print(tgc_ptr_t* ptr) {
+  if (ptr->flags & TGC_LEAF) {
+    printf("string \"%s\"", ptr->ptr);
+  } else {
+    TodoItem* todo = (TodoItem*)ptr->ptr;
+    printf("TodoItem { name = \"%s\", next = %p }", todo->name, todo->next);
+  }
+}
 
 void todo_print(TodoItem* todo) {
   if (todo == NULL) {
@@ -23,12 +33,17 @@ void todo_print(TodoItem* todo) {
   }
 }
 
+void str_dtor(void* _str) {
+  char* str = (char*)_str;
+  printf("Destructing string '%s'\n", str);
+}
+
 TodoItem* todo_add(TodoItem* todo, const char* name) {
-  TodoItem* todo_item = (TodoItem*)tgc_alloc(sizeof(TodoItem));
+  TodoItem* todo_item = (TodoItem*)tgc_alloc_opt(&gc, sizeof(TodoItem), 0, NULL);
   size_t len = strlen(name);
 
   todo_item->next = todo;
-  todo_item->name = (char*)tgc_alloc(len + 1);
+  todo_item->name = (char*)tgc_alloc_opt(&gc, len + 1, TGC_LEAF, str_dtor);
   strcpy(todo_item->name, name);
 
   return todo_item;
@@ -74,10 +89,12 @@ TodoItem* todo_snip(TodoItem* todo, int index) {
   return todo;
 }
 
-int main() {
+int main(int argc, char **argv) {
   char input[1024];
   TodoItem* todo = NULL;
   bool quitting = false;
+
+  tgc_start(&gc, &argc);
 
   while (!quitting) {
     todo_print(todo);
@@ -101,6 +118,9 @@ int main() {
         case '/':
           todo = todo_snip(todo, atoi(&input[1]));
           break;
+        case 'p':
+          tgc_debug(&gc, pretty_print);
+          break;
         case 'q':
           quitting = true;
           break;
@@ -118,6 +138,8 @@ int main() {
       quitting = true;
     }
   }
+
+  tgc_stop(&gc);
 
   return 0;
 }
