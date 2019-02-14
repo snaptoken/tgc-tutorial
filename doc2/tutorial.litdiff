@@ -1,0 +1,204 @@
+~~~ 1. main
+--- /dev/null
++++ todo.c
+@@ -0,0 +1,3 @@
++int main() {
++  return 0;
++}
+
+~~~ 2. q to quit
+--- todo.c
++++ todo.c
+@@ -1,3 +1,18 @@
++#include <stdio.h>
++
+|int main() {
++  char input[1024];
++  int quitting = 0;
++
++  while (!quitting) {
++    if (fgets(input, sizeof(input) - 1, stdin)) {
++      switch (input[0]) {
++        case 'q':
++          quitting = 1;
++          break;
++      }
++    }
++  }
++
+|  return 0;
+|}
+
+~~~ 3. prompt
+--- todo.c
++++ todo.c
+@@ -5,6 +5,9 @@
+|  int quitting = 0;
+|
+|  while (!quitting) {
++    printf("todo> ");
++    fflush(stdout);
++
+|    if (fgets(input, sizeof(input) - 1, stdin)) {
+|      switch (input[0]) {
+|        case 'q':
+
+~~~ 4. handle eof
+--- todo.c
++++ todo.c
+@@ -15,6 +15,11 @@
+|          break;
+|      }
+|    }
++
++    if (feof(stdin)) {
++      printf("\n");
++      quitting = 1;
++    }
+|  }
+|
+|  return 0;
+
+~~~ 5. todo struct
+--- todo.c
++++ todo.c
+@@ -1,5 +1,10 @@
+|#include <stdio.h>
+|
++typedef struct TodoItem {
++  char* description;
++  struct TodoItem* next;
++} TodoItem;
++
+|int main() {
+|  char input[1024];
+|  int quitting = 0;
+
+~~~ 6. todo list head
+--- todo.c
++++ todo.c
+@@ -8,6 +8,7 @@
+|int main() {
+|  char input[1024];
+|  int quitting = 0;
++  TodoItem* todo = NULL;
+|
+|  while (!quitting) {
+|    printf("todo> ");
+
+~~~ 7. call todo_add
+--- todo.c
++++ todo.c
+@@ -16,6 +16,9 @@
+|
+|    if (fgets(input, sizeof(input) - 1, stdin)) {
+|      switch (input[0]) {
++        case '+':
++          todo = todo_add(todo, &input[1]);
++          break;
+|        case 'q':
+|          quitting = 1;
+|          break;
+
+~~~ 8. implement todo_add
+--- todo.c
++++ todo.c
+@@ -5,6 +5,17 @@
+|  struct TodoItem* next;
+|} TodoItem;
+|
++TodoItem* todo_add(TodoItem* todo, const char* description) {
++  TodoItem* todo_item = (TodoItem*)malloc(sizeof(TodoItem));
++  size_t len = strlen(description);
++
++  todo_item->next = todo;
++  todo_item->description = (char*)malloc(len + 1);
++  strcpy(todo_item->description, description);
++
++  return todo_item;
++}
++
+|int main() {
+|  char input[1024];
+|  int quitting = 0;
+
+~~~ 9. todo includes
+--- todo.c
++++ todo.c
+@@ -1,4 +1,6 @@
+|#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
+|
+|typedef struct TodoItem {
+|  char* description;
+
+~~~ 10. todo_print
+--- todo.c
++++ todo.c
+@@ -7,6 +7,19 @@
+|  struct TodoItem* next;
+|} TodoItem;
+|
++void todo_print(TodoItem* todo) {
++  if (todo == NULL) {
++    printf("No todos! :D\n");
++  }
++
++  int id = 1;
++  while (todo) {
++    printf("%d. %s\n", id, todo->description);
++    todo = todo->next;
++    id++;
++  }
++}
++
+|TodoItem* todo_add(TodoItem* todo, const char* description) {
+|  TodoItem* todo_item = (TodoItem*)malloc(sizeof(TodoItem));
+|  size_t len = strlen(description);
+
+~~~ 11. call todo_print
+--- todo.c
++++ todo.c
+@@ -37,6 +37,8 @@
+|  TodoItem* todo = NULL;
+|
+|  while (!quitting) {
++    todo_print(todo);
++
+|    printf("todo> ");
+|    fflush(stdout);
+|
+
+~~~ 12. trim trailing newline
+--- todo.c
++++ todo.c
+@@ -43,6 +43,11 @@
+|    fflush(stdout);
+|
+|    if (fgets(input, sizeof(input) - 1, stdin)) {
++      if (input[0]) {
++        // Trim trailing newline.
++        input[strlen(input) - 1] = '\0';
++      }
++
+|      switch (input[0]) {
+|        case '+':
+|          todo = todo_add(todo, &input[1]);
+
+~~~ 13. better cli
+--- todo.c
++++ todo.c
+@@ -55,6 +55,11 @@
+|        case 'q':
+|          quitting = 1;
+|          break;
++        case '\0':
++          break;
++        default:
++          printf("Invalid command.\nAvailable commands: + q\n\n");
++          break;
+|      }
+|    }
+|
+
