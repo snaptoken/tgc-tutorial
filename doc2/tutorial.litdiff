@@ -202,3 +202,209 @@
 |    }
 |
 
+~~~ 14. call todo_remove
+--- todo.c
++++ todo.c
+@@ -52,6 +52,9 @@
+|        case '+':
+|          todo = todo_add(todo, &input[1]);
+|          break;
++        case '-':
++          todo = todo_remove(todo, atoi(&input[1]));
++          break;
+|        case 'q':
+|          quitting = 1;
+|          break;
+
+~~~ 15. remove xs
+--- todo.c
++++ todo.c
+@@ -31,6 +31,23 @@
+|  return todo_item;
+|}
+|
++TodoItem* todo_remove(TodoItem* todo, int index) {
++  int id = 1;
++  TodoItem* cur = todo;
++  while (cur) {
++    if (id == index - 1) {
++      if (cur->next) {
++        cur->next = cur->next->next;
++      }
++      break;
++    }
++    cur = cur->next;
++    id++;
++  }
++
++  return todo;
++}
++
+|int main() {
+|  char input[1024];
+|  int quitting = 0;
+
+~~~ 16. remove x
+--- todo.c
++++ todo.c
+@@ -32,6 +32,10 @@
+|}
+|
+|TodoItem* todo_remove(TodoItem* todo, int index) {
++  if (index == 1 && todo) {
++    return todo->next;
++  }
++
+|  int id = 1;
+|  TodoItem* cur = todo;
+|  while (cur) {
+
+~~~ 17. add snip command
+--- todo.c
++++ todo.c
+@@ -76,13 +76,16 @@
+|        case '-':
+|          todo = todo_remove(todo, atoi(&input[1]));
+|          break;
++        case '/':
++          todo = todo_snip(todo, atoi(&input[1]));
++          break;
+|        case 'q':
+|          quitting = 1;
+|          break;
+|        case '\0':
+|          break;
+|        default:
+-          printf("Invalid command.\nAvailable commands: + q\n\n");
++          printf("Invalid command.\nAvailable commands: + - / q\n\n");
+|          break;
+|      }
+|    }
+
+~~~ 18. snip xs
+--- todo.c
++++ todo.c
+@@ -52,6 +52,21 @@
+|  return todo;
+|}
+|
++TodoItem* todo_snip(TodoItem* todo, int index) {
++  int id = 1;
++  TodoItem* cur = todo;
++  while (cur) {
++    if (id == index - 1) {
++      cur->next = NULL;
++      break;
++    }
++    cur = cur->next;
++    id++;
++  }
++
++  return todo;
++}
++
+|int main() {
+|  char input[1024];
+|  int quitting = 0;
+
+~~~ 19. snip x
+--- todo.c
++++ todo.c
+@@ -53,6 +53,10 @@
+|}
+|
+|TodoItem* todo_snip(TodoItem* todo, int index) {
++  if (index <= 1) {
++    return NULL;
++  }
++
+|  int id = 1;
+|  TodoItem* cur = todo;
+|  while (cur) {
+
+~~~ 20. free final todo list
+--- todo.c
++++ todo.c
+@@ -115,5 +115,14 @@
+|    }
+|  }
+|
++  TodoItem* cur = todo;
++  while (cur) {
++    TodoItem* to_delete = cur;
++    cur = cur->next;
++
++    free(to_delete->description);
++    free(to_delete);
++  }
++
+|  return 0;
+|}
+
+~~~ 21. free remove x
+--- todo.c
++++ todo.c
+@@ -33,7 +33,10 @@
+|
+|TodoItem* todo_remove(TodoItem* todo, int index) {
+|  if (index == 1 && todo) {
+-    return todo->next;
++    TodoItem* next = todo->next;
++    free(todo->description);
++    free(todo);
++    return next;
+|  }
+|
+|  int id = 1;
+
+~~~ 22. free remove xs
+--- todo.c
++++ todo.c
+@@ -44,7 +44,10 @@
+|  while (cur) {
+|    if (id == index - 1) {
+|      if (cur->next) {
++        TodoItem* to_delete = cur->next;
+|        cur->next = cur->next->next;
++        free(to_delete->description);
++        free(to_delete);
+|      }
+|      break;
+|    }
+
+~~~ 23. free snip x
+--- todo.c
++++ todo.c
+@@ -60,6 +60,12 @@
+|
+|TodoItem* todo_snip(TodoItem* todo, int index) {
+|  if (index <= 1) {
++    while (todo) {
++      TodoItem* to_delete = todo;
++      todo = todo->next;
++      free(to_delete->description);
++      free(to_delete);
++    }
+|    return NULL;
+|  }
+|
+
+~~~ 24. free snip xs
+--- todo.c
++++ todo.c
+@@ -73,7 +73,14 @@
+|  TodoItem* cur = todo;
+|  while (cur) {
+|    if (id == index - 1) {
++      TodoItem* to_snip = cur->next;
+|      cur->next = NULL;
++      while (to_snip) {
++        TodoItem* to_delete = to_snip;
++        to_snip = to_snip->next;
++        free(to_delete->description);
++        free(to_delete);
++      }
+|      break;
+|    }
+|    cur = cur->next;
+
