@@ -1,0 +1,775 @@
+# One fell sweep
+
+~~~ 25. revert free
+--- todo.c
++++ todo.c
+@@ -33,10 +33,7 @@
+|
+|TodoItem* todo_remove(TodoItem* todo, int index) {
+|  if (index == 1 && todo) {
+-    TodoItem* next = todo->next;
+-    free(todo->description);
+-    free(todo);
+-    return next;
++    return todo->next;
+|  }
+|
+|  int id = 1;
+@@ -44,10 +41,7 @@
+|  while (cur) {
+|    if (id == index - 1) {
+|      if (cur->next) {
+-        TodoItem* to_delete = cur->next;
+|        cur->next = cur->next->next;
+-        free(to_delete->description);
+-        free(to_delete);
+|      }
+|      break;
+|    }
+@@ -60,12 +54,6 @@
+|
+|TodoItem* todo_snip(TodoItem* todo, int index) {
+|  if (index <= 1) {
+-    while (todo) {
+-      TodoItem* to_delete = todo;
+-      todo = todo->next;
+-      free(to_delete->description);
+-      free(to_delete);
+-    }
+|    return NULL;
+|  }
+|
+@@ -73,14 +61,7 @@
+|  TodoItem* cur = todo;
+|  while (cur) {
+|    if (id == index - 1) {
+-      TodoItem* to_snip = cur->next;
+|      cur->next = NULL;
+-      while (to_snip) {
+-        TodoItem* to_delete = to_snip;
+-        to_snip = to_snip->next;
+-        free(to_delete->description);
+-        free(to_delete);
+-      }
+|      break;
+|    }
+|    cur = cur->next;
+@@ -134,14 +115,5 @@
+|    }
+|  }
+|
+-  TodoItem* cur = todo;
+-  while (cur) {
+-    TodoItem* to_delete = cur;
+-    cur = cur->next;
+-
+-    free(to_delete->description);
+-    free(to_delete);
+-  }
+-
+|  return 0;
+|}
+
+~~~ 26. call-tgc-alloc
+--- todo.c
++++ todo.c
+@@ -21,11 +21,11 @@
+|}
+|
+|TodoItem* todo_add(TodoItem* todo, const char* description) {
+-  TodoItem* todo_item = (TodoItem*)malloc(sizeof(TodoItem));
++  TodoItem* todo_item = (TodoItem*)tgc_alloc(sizeof(TodoItem));
+|  size_t len = strlen(description);
+|
+|  todo_item->next = todo;
+-  todo_item->description = (char*)malloc(len + 1);
++  todo_item->description = (char*)tgc_alloc(len + 1);
+|  strcpy(todo_item->description, description);
+|
+|  return todo_item;
+
+~~~ 27. include-tgc-h
+--- todo.c
++++ todo.c
+@@ -1,6 +1,7 @@
+|#include <stdio.h>
+|#include <stdlib.h>
+|#include <string.h>
++#include "tgc.h"
+|
+|typedef struct TodoItem {
+|  char* description;
+
+~~~ 28. declare-tgc-alloc
+--- /dev/null
++++ tgc.h
+@@ -0,0 +1,1 @@
++void *tgc_alloc(size_t size);
+
+~~~ 29. include-stdlib
+--- tgc.h
++++ tgc.h
+@@ -1,1 +1,3 @@
++#include <stdlib.h>
++
+|void *tgc_alloc(size_t size);
+
+~~~ 30. include-guard
+--- tgc.h
++++ tgc.h
+@@ -1,3 +1,8 @@
++#ifndef TGC_H
++#define TGC_H
++
+|#include <stdlib.h>
+|
+|void *tgc_alloc(size_t size);
++
++#endif
+
+~~~ 31. define-tgc-alloc
+--- /dev/null
++++ tgc.c
+@@ -0,0 +1,4 @@
++void *tgc_alloc(size_t size) {
++  void *ptr = malloc(size);
++  return ptr;
++}
+
+~~~ 32. include-tgc-h
+--- tgc.c
++++ tgc.c
+@@ -1,3 +1,5 @@
++#include "tgc.h"
++
+|void *tgc_alloc(size_t size) {
+|  void *ptr = malloc(size);
+|  return ptr;
+
+~~~ 33. section-allocator-functions
+--- tgc.c
++++ tgc.c
+@@ -1,5 +1,7 @@
+|#include "tgc.h"
+|
++/*** allocator functions ***/
++
+|void *tgc_alloc(size_t size) {
+|  void *ptr = malloc(size);
+|  return ptr;
+
+~~~ 34. struct-tgc-ptr-t
+--- tgc.h
++++ tgc.h
+@@ -3,6 +3,10 @@
+|
+|#include <stdlib.h>
+|
++typedef struct {
++  void *ptr;
++} tgc_ptr_t;
++
+|void *tgc_alloc(size_t size);
+|
+|#endif
+
+~~~ 35. struct-tgc-t
+--- tgc.h
++++ tgc.h
+@@ -7,6 +7,11 @@
+|  void *ptr;
+|} tgc_ptr_t;
+|
++typedef struct {
++  tgc_ptr_t *items;
++  size_t nitems, nslots;
++} tgc_t;
++
+|void *tgc_alloc(size_t size);
+|
+|#endif
+
+~~~ 36. static-gc
+--- todo.c
++++ todo.c
+@@ -3,6 +3,8 @@
+|#include <string.h>
+|#include "tgc.h"
+|
++static tgc_t gc;
++
+|typedef struct TodoItem {
+|  char* description;
+|  struct TodoItem* next;
+
+~~~ 37. call-tgc-start
+--- todo.c
++++ todo.c
+@@ -79,6 +79,8 @@
+|  int quitting = 0;
+|  TodoItem* todo = NULL;
+|
++  tgc_start(&gc);
++
+|  while (!quitting) {
+|    todo_print(todo);
+|
+
+~~~ 38. define-tgc-start
+--- tgc.h
++++ tgc.h
+@@ -12,6 +12,8 @@
+|  size_t nitems, nslots;
+|} tgc_t;
+|
++void tgc_start(tgc_t *gc);
++
+|void *tgc_alloc(size_t size);
+|
+|#endif
+
+~~~ 39. really-define-tgc-start
+--- tgc.c
++++ tgc.c
+@@ -1,5 +1,13 @@
+|#include "tgc.h"
+|
++/*** gc control ***/
++
++void tgc_start(tgc_t *gc) {
++  gc->nitems = 0;
++  gc->nslots = 0;
++  gc->items = NULL;
++}
++
+|/*** allocator functions ***/
+|
+|void *tgc_alloc(size_t size) {
+
+~~~ 40. tgc-alloc-takes-global-state-h
+--- tgc.h
++++ tgc.h
+@@ -14,6 +14,6 @@
+|
+|void tgc_start(tgc_t *gc);
+|
+-void *tgc_alloc(size_t size);
++void *tgc_alloc(tgc_t *gc, size_t size);
+|
+|#endif
+
+~~~ 41. tgc-alloc-takes-global-state
+--- tgc.c
++++ tgc.c
+@@ -10,7 +10,7 @@
+|
+|/*** allocator functions ***/
+|
+-void *tgc_alloc(size_t size) {
++void *tgc_alloc(tgc_t *gc, size_t size) {
+|  void *ptr = malloc(size);
+|  return ptr;
+|}
+
+~~~ 42. call-tgc-add
+--- tgc.c
++++ tgc.c
+@@ -12,5 +12,6 @@
+|
+|void *tgc_alloc(tgc_t *gc, size_t size) {
+|  void *ptr = malloc(size);
++  tgc_add(gc, ptr);
+|  return ptr;
+|}
+
+~~~ 43. define-tgc-add
+--- tgc.c
++++ tgc.c
+@@ -10,6 +10,12 @@
+|
+|/*** allocator functions ***/
+|
++static void tgc_add(tgc_t *gc, void *ptr) {
++  gc->nitems++;
++  tgc_resize(gc);
++  tgc_add_ptr(gc, ptr);
++}
++
+|void *tgc_alloc(tgc_t *gc, size_t size) {
+|  void *ptr = malloc(size);
+|  tgc_add(gc, ptr);
+
+~~~ 44. define-tgc-resize
+--- tgc.c
++++ tgc.c
+@@ -1,5 +1,14 @@
+|#include "tgc.h"
+|
++/*** resize pointer table ***/
++
++static void tgc_resize(tgc_t *gc) {
++  if (gc->nslots >= gc->nitems) return;
++
++  gc->nslots = gc->nitems * 2;
++  gc->items = calloc(gc->nslots, sizeof(tgc_ptr_t));
++}
++
+|/*** gc control ***/
+|
+|void tgc_start(tgc_t *gc) {
+
+~~~ 45. memcpy-pointer-table
+--- tgc.c
++++ tgc.c
+@@ -3,10 +3,15 @@
+|/*** resize pointer table ***/
+|
+|static void tgc_resize(tgc_t *gc) {
++  tgc_ptr_t *old_items = gc->items;
++  size_t old_size = gc->nslots;
++
+|  if (gc->nslots >= gc->nitems) return;
+|
+|  gc->nslots = gc->nitems * 2;
+|  gc->items = calloc(gc->nslots, sizeof(tgc_ptr_t));
++
++  memcpy(gc->items, old_items, old_size * sizeof(tgc_ptr_t));
+|}
+|
+|/*** gc control ***/
+
+~~~ 46. include-string-h
+--- tgc.h
++++ tgc.h
+@@ -2,6 +2,7 @@
+|#define TGC_H
+|
+|#include <stdlib.h>
++#include <string.h>
+|
+|typedef struct {
+|  void *ptr;
+
+~~~ 47. free-old-pointer-table
+--- tgc.c
++++ tgc.c
+@@ -12,6 +12,8 @@
+|  gc->items = calloc(gc->nslots, sizeof(tgc_ptr_t));
+|
+|  memcpy(gc->items, old_items, old_size * sizeof(tgc_ptr_t));
++
++  free(old_items);
+|}
+|
+|/*** gc control ***/
+
+~~~ 48. define-tgc-add-ptr
+--- tgc.c
++++ tgc.c
+@@ -1,5 +1,21 @@
+|#include "tgc.h"
+|
++/*** pointer table operations ***/
++
++static void tgc_add_ptr(tgc_t *gc, void *ptr) {
++  tgc_ptr_t item;
++  size_t i;
++
++  item.ptr = ptr;
++
++  for (i = 0; i < gc->nslots; i++) {
++    if (gc->items[i].ptr == NULL) {
++      gc->items[i] = item;
++      return;
++    }
++  }
++}
++
+|/*** resize pointer table ***/
+|
+|static void tgc_resize(tgc_t *gc) {
+
+~~~ 49. xxx-prevent-readding-a-pointer
+--- tgc.c
++++ tgc.c
+@@ -13,6 +13,7 @@
+|      gc->items[i] = item;
+|      return;
+|    }
++    if (gc->items[i].ptr == item.ptr) { return; }
+|  }
+|}
+|
+
+~~~ 50. pass-gc-to-tgc-alloc
+--- todo.c
++++ todo.c
+@@ -24,11 +24,11 @@
+|}
+|
+|TodoItem* todo_add(TodoItem* todo, const char* description) {
+-  TodoItem* todo_item = (TodoItem*)tgc_alloc(sizeof(TodoItem));
++  TodoItem* todo_item = (TodoItem*)tgc_alloc(&gc, sizeof(TodoItem));
+|  size_t len = strlen(description);
+|
+|  todo_item->next = todo;
+-  todo_item->description = (char*)tgc_alloc(len + 1);
++  todo_item->description = (char*)tgc_alloc(&gc, len + 1);
+|  strcpy(todo_item->description, description);
+|
+|  return todo_item;
+
+~~~ 51. call-tgc-debug
+--- todo.c
++++ todo.c
+@@ -103,6 +103,9 @@
+|        case '/':
+|          todo = todo_snip(todo, atoi(&input[1]));
+|          break;
++        case 'p':
++          tgc_debug(&gc);
++          break;
+|        case 'q':
+|          quitting = 1;
+|          break;
+
+~~~ 52. declare-tgc-debug
+--- tgc.h
++++ tgc.h
+@@ -17,4 +17,6 @@
+|
+|void *tgc_alloc(tgc_t *gc, size_t size);
+|
++void tgc_debug(tgc_t *gc);
++
+|#endif
+
+~~~ 53. define-tgc-debug
+--- tgc.c
++++ tgc.c
+@@ -54,3 +54,19 @@
+|  tgc_add(gc, ptr);
+|  return ptr;
+|}
++
++/*** debugging ***/
++
++static void tgc_debug_ptr(tgc_ptr_t *ptr) {
++  printf("  ptr = %p\n", ptr->ptr);
++}
++
++void tgc_debug(tgc_t *gc) {
++  printf("nitems = %zu\n", gc->nitems);
++  printf("nslots = %zu\n", gc->nslots);
++  for (size_t i = 0; i < gc->nslots; i++) {
++    printf("items[%zu] = {\n", i);
++    tgc_debug_ptr(&gc->items[i]);
++    printf("}\n");
++  }
++}
+
+~~~ 54. include-stdio-h
+--- tgc.h
++++ tgc.h
+@@ -1,6 +1,7 @@
+|#ifndef TGC_H
+|#define TGC_H
+|
++#include <stdio.h>
+|#include <stdlib.h>
+|#include <string.h>
+|
+
+~~~ 55. log-tgc-alloc
+--- tgc.c
++++ tgc.c
+@@ -51,6 +51,7 @@
+|
+|void *tgc_alloc(tgc_t *gc, size_t size) {
+|  void *ptr = malloc(size);
++  printf("[DEBUG] allocated %zu bytes at %p\n", size, ptr);
+|  tgc_add(gc, ptr);
+|  return ptr;
+|}
+
+~~~ 56. log-tgc-resize
+--- tgc.c
++++ tgc.c
+@@ -31,6 +31,9 @@
+|  memcpy(gc->items, old_items, old_size * sizeof(tgc_ptr_t));
+|
+|  free(old_items);
++
++  printf("[DEBUG] resized pointer table from %zu to %zu slots\n",
++         old_size, gc->nslots);
+|}
+|
+|/*** gc control ***/
+
+~~~ 57. call-pretty-print
+--- tgc.c
++++ tgc.c
+@@ -61,16 +61,21 @@
+|
+|/*** debugging ***/
+|
+-static void tgc_debug_ptr(tgc_ptr_t *ptr) {
+-  printf("  ptr = %p\n", ptr->ptr);
++static void tgc_debug_ptr(tgc_ptr_t *ptr, void (*pretty_print)(tgc_ptr_t*)) {
++  printf("  ptr = %p", ptr->ptr);
++  if (ptr->ptr != NULL) {
++    printf(" ");
++    pretty_print(ptr);
++  }
++  printf("\n");
+|}
+|
+-void tgc_debug(tgc_t *gc) {
++void tgc_debug(tgc_t *gc, void (*pretty_print)(tgc_ptr_t*)) {
+|  printf("nitems = %zu\n", gc->nitems);
+|  printf("nslots = %zu\n", gc->nslots);
+|  for (size_t i = 0; i < gc->nslots; i++) {
+|    printf("items[%zu] = {\n", i);
+-    tgc_debug_ptr(&gc->items[i]);
++    tgc_debug_ptr(&gc->items[i], pretty_print);
+|    printf("}\n");
+|  }
+|}
+
+~~~ 58. tgc-h-pretty-print
+--- tgc.h
++++ tgc.h
+@@ -18,6 +18,6 @@
+|
+|void *tgc_alloc(tgc_t *gc, size_t size);
+|
+-void tgc_debug(tgc_t *gc);
++void tgc_debug(tgc_t *gc, void (*pretty_print)(tgc_ptr_t*));
+|
+|#endif
+
+~~~ 59. define-pretty-print
+--- todo.c
++++ todo.c
+@@ -1,3 +1,4 @@
++#include <ctype.h>
+|#include <stdio.h>
+|#include <stdlib.h>
+|#include <string.h>
+@@ -74,6 +75,19 @@
+|  return todo;
+|}
+|
++void pretty_print(tgc_ptr_t* ptr) {
++  char *byte = ptr->ptr;
++  while (isgraph(*byte++));
++
++  if (*byte == '\0') {
++    printf("string \"%s\"", ptr->ptr);
++  } else {
++    TodoItem* todo = (TodoItem*)ptr->ptr;
++    printf("TodoItem { description = \"%s\", next = %p }",
++           todo->description, todo->next);
++  }
++}
++
+|int main() {
+|  char input[1024];
+|  int quitting = 0;
+@@ -104,7 +118,7 @@
+|          todo = todo_snip(todo, atoi(&input[1]));
+|          break;
+|        case 'p':
+-          tgc_debug(&gc);
++          tgc_debug(&gc, pretty_print);
+|          break;
+|        case 'q':
+|          quitting = 1;
+
+~~~ 60. log-tgc-start
+--- tgc.c
++++ tgc.c
+@@ -42,6 +42,8 @@
+|  gc->nitems = 0;
+|  gc->nslots = 0;
+|  gc->items = NULL;
++
++  printf("[DEBUG] tgc start\n");
+|}
+|
+|/*** allocator functions ***/
+
+~~~ 61. handle-malloc-error
+--- tgc.c
++++ tgc.c
+@@ -56,8 +56,10 @@
+|
+|void *tgc_alloc(tgc_t *gc, size_t size) {
+|  void *ptr = malloc(size);
+-  printf("[DEBUG] allocated %zu bytes at %p\n", size, ptr);
+-  tgc_add(gc, ptr);
++  if (ptr != NULL) {
++    printf("[DEBUG] allocated %zu bytes at %p\n", size, ptr);
++    tgc_add(gc, ptr);
++  }
+|  return ptr;
+|}
+|
+
+~~~ 62. handle-calloc-error
+--- tgc.c
++++ tgc.c
+@@ -19,21 +19,29 @@
+|
+|/*** resize pointer table ***/
+|
+-static void tgc_resize(tgc_t *gc) {
++static int tgc_resize(tgc_t *gc) {
+|  tgc_ptr_t *old_items = gc->items;
+|  size_t old_size = gc->nslots;
+|
+-  if (gc->nslots >= gc->nitems) return;
++  if (gc->nslots >= gc->nitems) return 1;
+|
+|  gc->nslots = gc->nitems * 2;
+|  gc->items = calloc(gc->nslots, sizeof(tgc_ptr_t));
+|
++  if (gc->items == NULL) {
++    gc->nslots = old_size;
++    gc->items = old_items;
++    return 0;
++  }
++
+|  memcpy(gc->items, old_items, old_size * sizeof(tgc_ptr_t));
+|
+|  free(old_items);
+|
+|  printf("[DEBUG] resized pointer table from %zu to %zu slots\n",
+|         old_size, gc->nslots);
++
++  return 1;
+|}
+|
+|/*** gc control ***/
+
+~~~ 63. handle-tgc-resize-error
+--- tgc.c
++++ tgc.c
+@@ -56,10 +56,17 @@
+|
+|/*** allocator functions ***/
+|
+-static void tgc_add(tgc_t *gc, void *ptr) {
++static void *tgc_add(tgc_t *gc, void *ptr) {
+|  gc->nitems++;
+-  tgc_resize(gc);
+-  tgc_add_ptr(gc, ptr);
++
++  if (tgc_resize(gc)) {
++    tgc_add_ptr(gc, ptr);
++    return ptr;
++  } else {
++    gc->nitems--;
++    free(ptr);
++    return NULL;
++  }
+|}
+|
+|void *tgc_alloc(tgc_t *gc, size_t size) {
+
+~~~ 64. handle-tgc-add-error
+--- tgc.c
++++ tgc.c
+@@ -73,7 +73,7 @@
+|  void *ptr = malloc(size);
+|  if (ptr != NULL) {
+|    printf("[DEBUG] allocated %zu bytes at %p\n", size, ptr);
+-    tgc_add(gc, ptr);
++    ptr = tgc_add(gc, ptr);
+|  }
+|  return ptr;
+|}
+
+~~~ 65. call-tgc-stop
+--- todo.c
++++ todo.c
+@@ -137,5 +137,7 @@
+|    }
+|  }
+|
++  tgc_stop(&gc);
++
+|  return 0;
+|}
+
+~~~ 66. declare-tgc-stop
+--- tgc.h
++++ tgc.h
+@@ -15,6 +15,7 @@
+|} tgc_t;
+|
+|void tgc_start(tgc_t *gc);
++void tgc_stop(tgc_t *gc);
+|
+|void *tgc_alloc(tgc_t *gc, size_t size);
+|
+
+~~~ 67. define-tgc-stop
+--- tgc.c
++++ tgc.c
+@@ -54,6 +54,14 @@
+|  printf("[DEBUG] tgc start\n");
+|}
+|
++void tgc_stop(tgc_t *gc) {
++  printf("[DEBUG] running sweep phase without marking anything\n");
++  tgc_sweep(gc);
++  free(gc->items);
++
++  printf("[DEBUG] tgc stop\n");
++}
++
+|/*** allocator functions ***/
+|
+|static void *tgc_add(tgc_t *gc, void *ptr) {
+
+~~~ 68. tgc-sweep
+--- tgc.c
++++ tgc.c
+@@ -44,6 +44,22 @@
+|  return 1;
+|}
+|
++/*** mark and sweep ***/
++
++static void tgc_sweep(tgc_t *gc) {
++  size_t i;
++
++  printf("[DEBUG] starting sweep phase\n");
++
++  for (i = 0; i < gc->nslots; i++) {
++    if (gc->items[i].ptr == NULL) { continue; }
++    printf("[DEBUG] freeing %p\n", gc->items[i].ptr);
++    free(gc->items[i].ptr);
++    memset(&gc->items[i], 0, sizeof(tgc_ptr_t));
++    gc->nitems--;
++  }
++}
++
+|/*** gc control ***/
+|
+|void tgc_start(tgc_t *gc) {
+
+~~~ 69. xxx-return-early-if-nothing-to-sweep
+--- tgc.c
++++ tgc.c
+@@ -51,6 +51,8 @@
+|
+|  printf("[DEBUG] starting sweep phase\n");
+|
++  if (gc->nitems == 0) { return; }
++
+|  for (i = 0; i < gc->nslots; i++) {
+|    if (gc->items[i].ptr == NULL) { continue; }
+|    printf("[DEBUG] freeing %p\n", gc->items[i].ptr);
+
