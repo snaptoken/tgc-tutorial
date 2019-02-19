@@ -1,0 +1,89 @@
+# Mark and sweep
+
+~~~ 100. sweep-unmarked
+--- tgc.c
++++ tgc.c
+@@ -108,6 +108,7 @@
+|
+|  for (i = 0; i < gc->nslots; i++) {
+|    if (gc->items[i].ptr == NULL) { continue; }
++    if (gc->items[i].mark)        { continue; }
+|    printf("[DEBUG] freeing %p\n", gc->items[i].ptr);
+|    free(gc->items[i].ptr);
+|    memset(&gc->items[i], 0, sizeof(tgc_ptr_t));
+
+~~~ 101. reset-marks
+--- tgc.c
++++ tgc.c
+@@ -114,6 +114,10 @@
+|    memset(&gc->items[i], 0, sizeof(tgc_ptr_t));
+|    gc->nitems--;
+|  }
++
++  for (i = 0; i < gc->nslots; i++) {
++    gc->items[i].mark = 0;
++  }
+|}
+|
+|/*** gc control ***/
+
+~~~ 102. declare-tgc-run
+--- tgc.h
++++ tgc.h
+@@ -22,6 +22,7 @@
+|
+|void tgc_start(tgc_t *gc, void *stk);
+|void tgc_stop(tgc_t *gc);
++void tgc_run(tgc_t *gc);
+|
+|void *tgc_alloc(tgc_t *gc, size_t size);
+|
+
+~~~ 103. define-tgc-run
+--- tgc.c
++++ tgc.c
+@@ -141,6 +141,11 @@
+|  printf("[DEBUG] tgc stop\n");
+|}
+|
++void tgc_run(tgc_t *gc) {
++  tgc_mark(gc);
++  tgc_sweep(gc);
++}
++
+|/*** allocator functions ***/
+|
+|static void *tgc_add(tgc_t *gc, void *ptr, size_t size) {
+
+~~~ 104. collect-on-alloc
+--- tgc.c
++++ tgc.c
+@@ -157,6 +157,7 @@
+|
+|  if (tgc_resize(gc)) {
+|    tgc_add_ptr(gc, ptr, size);
++    tgc_run(gc);
+|    return ptr;
+|  } else {
+|    gc->nitems--;
+
+~~~ 105. cleanup-mark-debug
+--- tgc.c
++++ tgc.c
+@@ -190,8 +190,6 @@
+|}
+|
+|void tgc_debug(tgc_t *gc, void (*pretty_print)(tgc_ptr_t*)) {
+-  tgc_mark(gc);
+-
+|  printf("bottom = %p\n", gc->bottom);
+|  printf("minptr = %p\n", gc->minptr);
+|  printf("maxptr = %p\n", gc->maxptr);
+@@ -202,6 +200,4 @@
+|    tgc_debug_ptr(&gc->items[i], pretty_print);
+|    printf("}\n");
+|  }
+-
+-  exit(1);
+|}
+

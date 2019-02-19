@@ -1,0 +1,495 @@
+# Mark
+
+~~~ 70. add-mark
+--- tgc.h
++++ tgc.h
+@@ -7,6 +7,7 @@
+|
+|typedef struct {
+|  void *ptr;
++  int mark;
+|} tgc_ptr_t;
+|
+|typedef struct {
+
+~~~ 71. set-mark
+--- tgc.c
++++ tgc.c
+@@ -7,6 +7,7 @@
+|  size_t i;
+|
+|  item.ptr = ptr;
++  item.mark = 0;
+|
+|  for (i = 0; i < gc->nslots; i++) {
+|    if (gc->items[i].ptr == NULL) {
+
+~~~ 72. debug-mark
+--- tgc.c
++++ tgc.c
+@@ -114,6 +114,8 @@
+|    pretty_print(ptr);
+|  }
+|  printf("\n");
++
++  printf("  mark = %d\n", ptr->mark);
+|}
+|
+|void tgc_debug(tgc_t *gc, void (*pretty_print)(tgc_ptr_t*)) {
+
+~~~ 73. tgc-mark-ptr
+--- tgc.c
++++ tgc.c
+@@ -47,6 +47,18 @@
+|
+|/*** mark and sweep ***/
+|
++static void tgc_mark_ptr(tgc_t *gc, void *ptr) {
++  size_t i;
++
++  for (i = 0; i < gc->nslots; i++) {
++    if (ptr == gc->items[i].ptr) {
++      gc->items[i].mark = 1;
++      printf("[DEBUG] marked %p\n", ptr);
++      return;
++    }
++  }
++}
++
+|static void tgc_sweep(tgc_t *gc) {
+|  size_t i;
+|
+
+~~~ 74. add-bottom
+--- tgc.h
++++ tgc.h
+@@ -11,6 +11,7 @@
+|} tgc_ptr_t;
+|
+|typedef struct {
++  void *bottom;
+|  tgc_ptr_t *items;
+|  size_t nitems, nslots;
+|} tgc_t;
+
+~~~ 75. tgc-start-stk
+--- tgc.h
++++ tgc.h
+@@ -16,7 +16,7 @@
+|  size_t nitems, nslots;
+|} tgc_t;
+|
+-void tgc_start(tgc_t *gc);
++void tgc_start(tgc_t *gc, void *stk);
+|void tgc_stop(tgc_t *gc);
+|
+|void *tgc_alloc(tgc_t *gc, size_t size);
+
+~~~ 76. set-bottom
+--- tgc.c
++++ tgc.c
+@@ -77,7 +77,8 @@
+|
+|/*** gc control ***/
+|
+-void tgc_start(tgc_t *gc) {
++void tgc_start(tgc_t *gc, void *stk) {
++  gc->bottom = stk;
+|  gc->nitems = 0;
+|  gc->nslots = 0;
+|  gc->items = NULL;
+
+~~~ 77. pass-stack
+--- todo.c
++++ todo.c
+@@ -88,12 +88,12 @@
+|  }
+|}
+|
+-int main() {
++int main(int argc, char **argv) {
+|  char input[1024];
+|  int quitting = 0;
+|  TodoItem* todo = NULL;
+|
+-  tgc_start(&gc);
++  tgc_start(&gc, &argc);
+|
+|  while (!quitting) {
+|    todo_print(todo);
+
+~~~ 78. debug-bottom
+--- tgc.c
++++ tgc.c
+@@ -132,6 +132,7 @@
+|}
+|
+|void tgc_debug(tgc_t *gc, void (*pretty_print)(tgc_ptr_t*)) {
++  printf("bottom = %p\n", gc->bottom);
+|  printf("nitems = %zu\n", gc->nitems);
+|  printf("nslots = %zu\n", gc->nslots);
+|  for (size_t i = 0; i < gc->nslots; i++) {
+
+~~~ 79. tgc-mark-stack
+--- tgc.c
++++ tgc.c
+@@ -59,6 +59,15 @@
+|  }
+|}
+|
++static void tgc_mark_stack(tgc_t *gc) {
++  void *stk, *bot, *top, *p;
++  bot = gc->bottom; top = &stk;
++
++  for (p = top; p <= bot; p = ((char*)p) + sizeof(void*)) {
++    tgc_mark_ptr(gc, *((void**)p));
++  }
++}
++
+|static void tgc_sweep(tgc_t *gc) {
+|  size_t i;
+|
+
+~~~ 80. handle-both-stack-directions
+--- tgc.c
++++ tgc.c
+@@ -63,8 +63,16 @@
+|  void *stk, *bot, *top, *p;
+|  bot = gc->bottom; top = &stk;
+|
+-  for (p = top; p <= bot; p = ((char*)p) + sizeof(void*)) {
+-    tgc_mark_ptr(gc, *((void**)p));
++  if (bot > top) {
++    for (p = top; p <= bot; p = ((char*)p) + sizeof(void*)) {
++      tgc_mark_ptr(gc, *((void**)p));
++    }
++  }
++
++  if (bot < top) {
++    for (p = top; p >= bot; p = ((char*)p) - sizeof(void*)) {
++      tgc_mark_ptr(gc, *((void**)p));
++    }
+|  }
+|}
+|
+
+~~~ 81. tgc-mark
+--- tgc.c
++++ tgc.c
+@@ -76,6 +76,14 @@
+|  }
+|}
+|
++static void tgc_mark(tgc_t *gc) {
++  printf("[DEBUG] starting mark phase\n");
++
++  printf("[DEBUG] marking stack\n");
++
++  tgc_mark_stack(gc);
++}
++
+|static void tgc_sweep(tgc_t *gc) {
+|  size_t i;
+|
+
+~~~ 82. test-tgc-mark
+--- tgc.c
++++ tgc.c
+@@ -157,6 +157,8 @@
+|}
+|
+|void tgc_debug(tgc_t *gc, void (*pretty_print)(tgc_ptr_t*)) {
++  tgc_mark(gc);
++
+|  printf("bottom = %p\n", gc->bottom);
+|  printf("nitems = %zu\n", gc->nitems);
+|  printf("nslots = %zu\n", gc->nslots);
+@@ -165,4 +167,6 @@
+|    tgc_debug_ptr(&gc->items[i], pretty_print);
+|    printf("}\n");
+|  }
++
++  exit(1);
+|}
+
+~~~ 83. todo-cli
+--- todo.c
++++ todo.c
+@@ -88,13 +88,11 @@
+|  }
+|}
+|
+-int main(int argc, char **argv) {
++void todo_cli() {
+|  char input[1024];
+|  int quitting = 0;
+|  TodoItem* todo = NULL;
+|
+-  tgc_start(&gc, &argc);
+-
+|  while (!quitting) {
+|    todo_print(todo);
+|
+@@ -136,6 +134,12 @@
+|      quitting = 1;
+|    }
+|  }
++}
++
++int main(int argc, char **argv) {
++  tgc_start(&gc, &argc);
++
++  todo_cli();
+|
+|  tgc_stop(&gc);
+|
+
+~~~ 84. xxx-tgc-mark-return-early
+--- tgc.c
++++ tgc.c
+@@ -79,6 +79,8 @@
+|static void tgc_mark(tgc_t *gc) {
+|  printf("[DEBUG] starting mark phase\n");
+|
++  if (gc->nitems == 0) { return; }
++
+|  printf("[DEBUG] marking stack\n");
+|
+|  tgc_mark_stack(gc);
+
+~~~ 85. mark-stack-volatile
+--- tgc.c
++++ tgc.c
+@@ -77,13 +77,15 @@
+|}
+|
+|static void tgc_mark(tgc_t *gc) {
++  void (*volatile mark_stack)(tgc_t*) = tgc_mark_stack;
++
+|  printf("[DEBUG] starting mark phase\n");
+|
+|  if (gc->nitems == 0) { return; }
+|
+|  printf("[DEBUG] marking stack\n");
+|
+-  tgc_mark_stack(gc);
++  mark_stack(gc);
+|}
+|
+|static void tgc_sweep(tgc_t *gc) {
+
+~~~ 86. add-size
+--- tgc.h
++++ tgc.h
+@@ -8,6 +8,7 @@
+|typedef struct {
+|  void *ptr;
+|  int mark;
++  size_t size;
+|} tgc_ptr_t;
+|
+|typedef struct {
+
+~~~ 87. tgc-add-ptr-size
+--- tgc.c
++++ tgc.c
+@@ -2,12 +2,13 @@
+|
+|/*** pointer table operations ***/
+|
+-static void tgc_add_ptr(tgc_t *gc, void *ptr) {
++static void tgc_add_ptr(tgc_t *gc, void *ptr, size_t size) {
+|  tgc_ptr_t item;
+|  size_t i;
+|
+|  item.ptr = ptr;
+|  item.mark = 0;
++  item.size = size;
+|
+|  for (i = 0; i < gc->nslots; i++) {
+|    if (gc->items[i].ptr == NULL) {
+
+~~~ 88. tgc-add-size
+--- tgc.c
++++ tgc.c
+@@ -126,11 +126,11 @@
+|
+|/*** allocator functions ***/
+|
+-static void *tgc_add(tgc_t *gc, void *ptr) {
++static void *tgc_add(tgc_t *gc, void *ptr, size_t size) {
+|  gc->nitems++;
+|
+|  if (tgc_resize(gc)) {
+-    tgc_add_ptr(gc, ptr);
++    tgc_add_ptr(gc, ptr, size);
+|    return ptr;
+|  } else {
+|    gc->nitems--;
+
+~~~ 89. tgc-alloc-pass-size
+--- tgc.c
++++ tgc.c
+@@ -143,7 +143,7 @@
+|  void *ptr = malloc(size);
+|  if (ptr != NULL) {
+|    printf("[DEBUG] allocated %zu bytes at %p\n", size, ptr);
+-    ptr = tgc_add(gc, ptr);
++    ptr = tgc_add(gc, ptr, size);
+|  }
+|  return ptr;
+|}
+
+~~~ 90. debug-size
+--- tgc.c
++++ tgc.c
+@@ -159,6 +159,7 @@
+|  printf("\n");
+|
+|  printf("  mark = %d\n", ptr->mark);
++  printf("  size = %zu\n", ptr->size);
+|}
+|
+|void tgc_debug(tgc_t *gc, void (*pretty_print)(tgc_ptr_t*)) {
+
+~~~ 91. mark-heap
+--- tgc.c
++++ tgc.c
+@@ -49,12 +49,15 @@
+|/*** mark and sweep ***/
+|
+|static void tgc_mark_ptr(tgc_t *gc, void *ptr) {
+-  size_t i;
++  size_t i, k;
+|
+|  for (i = 0; i < gc->nslots; i++) {
+|    if (ptr == gc->items[i].ptr) {
+|      gc->items[i].mark = 1;
+|      printf("[DEBUG] marked %p\n", ptr);
++      for (k = 0; k < gc->items[i].size/sizeof(void*); k++) {
++        tgc_mark_ptr(gc, ((void**)gc->items[i].ptr)[k]);
++      }
+|      return;
+|    }
+|  }
+
+~~~ 92. mark-heap-avoid-infinite-recursion
+--- tgc.c
++++ tgc.c
+@@ -53,6 +53,7 @@
+|
+|  for (i = 0; i < gc->nslots; i++) {
+|    if (ptr == gc->items[i].ptr) {
++      if (gc->items[i].mark) { return; }
+|      gc->items[i].mark = 1;
+|      printf("[DEBUG] marked %p\n", ptr);
+|      for (k = 0; k < gc->items[i].size/sizeof(void*); k++) {
+
+~~~ 93. mark-registers
+--- tgc.c
++++ tgc.c
+@@ -82,6 +82,7 @@
+|}
+|
+|static void tgc_mark(tgc_t *gc) {
++  jmp_buf env;
+|  void (*volatile mark_stack)(tgc_t*) = tgc_mark_stack;
+|
+|  printf("[DEBUG] starting mark phase\n");
+@@ -90,6 +91,8 @@
+|
+|  printf("[DEBUG] marking stack\n");
+|
++  memset(&env, 0, sizeof(jmp_buf));
++  setjmp(env);
+|  mark_stack(gc);
+|}
+|
+
+~~~ 94. include-setjmp
+--- tgc.h
++++ tgc.h
+@@ -1,6 +1,7 @@
+|#ifndef TGC_H
+|#define TGC_H
+|
++#include <setjmp.h>
+|#include <stdio.h>
+|#include <stdlib.h>
+|#include <string.h>
+
+~~~ 95. add-minptr-maxptr
+--- tgc.h
++++ tgc.h
+@@ -3,6 +3,7 @@
+|
+|#include <setjmp.h>
+|#include <stdio.h>
++#include <stdint.h>
+|#include <stdlib.h>
+|#include <string.h>
+|
+@@ -14,6 +15,7 @@
+|
+|typedef struct {
+|  void *bottom;
++  uintptr_t minptr, maxptr;
+|  tgc_ptr_t *items;
+|  size_t nitems, nslots;
+|} tgc_t;
+
+~~~ 96. init-minptr-maxptr
+--- tgc.c
++++ tgc.c
+@@ -119,6 +119,8 @@
+|  gc->nitems = 0;
+|  gc->nslots = 0;
+|  gc->items = NULL;
++  gc->minptr = UINTPTR_MAX;
++  gc->maxptr = 0;
+|
+|  printf("[DEBUG] tgc start\n");
+|}
+
+~~~ 97. debug-minptr-maxptr
+--- tgc.c
++++ tgc.c
+@@ -175,6 +175,8 @@
+|  tgc_mark(gc);
+|
+|  printf("bottom = %p\n", gc->bottom);
++  printf("minptr = %p\n", gc->minptr);
++  printf("maxptr = %p\n", gc->maxptr);
+|  printf("nitems = %zu\n", gc->nitems);
+|  printf("nslots = %zu\n", gc->nslots);
+|  for (size_t i = 0; i < gc->nslots; i++) {
+
+~~~ 98. set-minptr-maxptr
+--- tgc.c
++++ tgc.c
+@@ -137,6 +137,10 @@
+|
+|static void *tgc_add(tgc_t *gc, void *ptr, size_t size) {
+|  gc->nitems++;
++  gc->maxptr = ((uintptr_t)ptr) + size > gc->maxptr ?
++    ((uintptr_t)ptr) + size : gc->maxptr;
++  gc->minptr = ((uintptr_t)ptr)        < gc->minptr ?
++    ((uintptr_t)ptr)        : gc->minptr;
+|
+|  if (tgc_resize(gc)) {
+|    tgc_add_ptr(gc, ptr, size);
+
+~~~ 99. use-minptr-maxptr
+--- tgc.c
++++ tgc.c
+@@ -51,6 +51,9 @@
+|static void tgc_mark_ptr(tgc_t *gc, void *ptr) {
+|  size_t i, k;
+|
++  if ((uintptr_t)ptr < gc->minptr
++  ||  (uintptr_t)ptr > gc->maxptr) { return; }
++
+|  for (i = 0; i < gc->nslots; i++) {
+|    if (ptr == gc->items[i].ptr) {
+|      if (gc->items[i].mark) { return; }
+
