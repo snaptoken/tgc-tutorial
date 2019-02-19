@@ -562,7 +562,7 @@
 |
 +void pretty_print(tgc_ptr_t* ptr) {
 +  char *byte = ptr->ptr;
-+  while (isgraph(*byte++));
++  while (isgraph(*byte)) { byte++; }
 +
 +  if (*byte == '\0') {
 +    printf("string \"%s\"", ptr->ptr);
