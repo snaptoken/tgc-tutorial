@@ -87,3 +87,198 @@
 -  exit(1);
 |}
 
+~~~ 106. add-mitems
+--- tgc.h
++++ tgc.h
+@@ -17,7 +17,7 @@
+|  void *bottom;
+|  uintptr_t minptr, maxptr;
+|  tgc_ptr_t *items;
+-  size_t nitems, nslots;
++  size_t nitems, nslots, mitems;
+|} tgc_t;
+|
+|void tgc_start(tgc_t *gc, void *stk);
+
+~~~ 107. init-mitems
+--- tgc.c
++++ tgc.c
+@@ -126,6 +126,7 @@
+|  gc->bottom = stk;
+|  gc->nitems = 0;
+|  gc->nslots = 0;
++  gc->mitems = 0;
+|  gc->items = NULL;
+|  gc->minptr = UINTPTR_MAX;
+|  gc->maxptr = 0;
+
+~~~ 108. debug-mitems
+--- tgc.c
++++ tgc.c
+@@ -196,6 +196,7 @@
+|  printf("maxptr = %p\n", gc->maxptr);
+|  printf("nitems = %zu\n", gc->nitems);
+|  printf("nslots = %zu\n", gc->nslots);
++  printf("mitems = %zu\n", gc->mitems);
+|  for (size_t i = 0; i < gc->nslots; i++) {
+|    printf("items[%zu] = {\n", i);
+|    tgc_debug_ptr(&gc->items[i], pretty_print);
+
+~~~ 109. set-mitems
+--- tgc.c
++++ tgc.c
+@@ -118,6 +118,8 @@
+|  for (i = 0; i < gc->nslots; i++) {
+|    gc->items[i].mark = 0;
+|  }
++
++  gc->mitems = gc->nitems + (gc->nitems / 2) + 1;
+|}
+|
+|/*** gc control ***/
+
+~~~ 110. use-mitems
+--- tgc.c
++++ tgc.c
+@@ -160,7 +160,9 @@
+|
+|  if (tgc_resize(gc)) {
+|    tgc_add_ptr(gc, ptr, size);
+-    tgc_run(gc);
++    if (gc->nitems > gc->mitems) {
++      tgc_run(gc);
++    }
+|    return ptr;
+|  } else {
+|    gc->nitems--;
+
+~~~ 111. add-sweepfactor
+--- tgc.h
++++ tgc.h
+@@ -17,6 +17,7 @@
+|  void *bottom;
+|  uintptr_t minptr, maxptr;
+|  tgc_ptr_t *items;
++  double sweepfactor;
+|  size_t nitems, nslots, mitems;
+|} tgc_t;
+|
+
+~~~ 112. set-sweepfactor
+--- tgc.c
++++ tgc.c
+@@ -132,6 +132,7 @@
+|  gc->items = NULL;
+|  gc->minptr = UINTPTR_MAX;
+|  gc->maxptr = 0;
++  gc->sweepfactor = 0.5;
+|
+|  printf("[DEBUG] tgc start\n");
+|}
+
+~~~ 113. debug-sweepfactor
+--- tgc.c
++++ tgc.c
+@@ -199,6 +199,7 @@
+|  printf("bottom = %p\n", gc->bottom);
+|  printf("minptr = %p\n", gc->minptr);
+|  printf("maxptr = %p\n", gc->maxptr);
++  printf("sweepfactor = %lf\n", gc->sweepfactor);
+|  printf("nitems = %zu\n", gc->nitems);
+|  printf("nslots = %zu\n", gc->nslots);
+|  printf("mitems = %zu\n", gc->mitems);
+
+~~~ 114. use-sweepfactor
+--- tgc.c
++++ tgc.c
+@@ -119,7 +119,7 @@
+|    gc->items[i].mark = 0;
+|  }
+|
+-  gc->mitems = gc->nitems + (gc->nitems / 2) + 1;
++  gc->mitems = gc->nitems + (size_t)(gc->nitems * gc->sweepfactor) + 1;
+|}
+|
+|/*** gc control ***/
+
+~~~ 115. add-paused
+--- tgc.h
++++ tgc.h
+@@ -15,6 +15,7 @@
+|
+|typedef struct {
+|  void *bottom;
++  int paused;
+|  uintptr_t minptr, maxptr;
+|  tgc_ptr_t *items;
+|  double sweepfactor;
+
+~~~ 116. init-paused
+--- tgc.c
++++ tgc.c
+@@ -126,6 +126,7 @@
+|
+|void tgc_start(tgc_t *gc, void *stk) {
+|  gc->bottom = stk;
++  gc->paused = 0;
+|  gc->nitems = 0;
+|  gc->nslots = 0;
+|  gc->mitems = 0;
+
+~~~ 117. debug-paused
+--- tgc.c
++++ tgc.c
+@@ -198,6 +198,7 @@
+|
+|void tgc_debug(tgc_t *gc, void (*pretty_print)(tgc_ptr_t*)) {
+|  printf("bottom = %p\n", gc->bottom);
++  printf("paused = %d\n", gc->paused);
+|  printf("minptr = %p\n", gc->minptr);
+|  printf("maxptr = %p\n", gc->maxptr);
+|  printf("sweepfactor = %lf\n", gc->sweepfactor);
+
+~~~ 118. declare-pause-resume
+--- tgc.h
++++ tgc.h
+@@ -24,6 +24,8 @@
+|
+|void tgc_start(tgc_t *gc, void *stk);
+|void tgc_stop(tgc_t *gc);
++void tgc_pause(tgc_t *gc);
++void tgc_resume(tgc_t *gc);
+|void tgc_run(tgc_t *gc);
+|
+|void *tgc_alloc(tgc_t *gc, size_t size);
+
+~~~ 119. define-pause-resume
+--- tgc.c
++++ tgc.c
+@@ -146,6 +146,14 @@
+|  printf("[DEBUG] tgc stop\n");
+|}
+|
++void tgc_pause(tgc_t *gc) {
++  gc->paused = 1;
++}
++
++void tgc_resume(tgc_t *gc) {
++  gc->paused = 0;
++}
++
+|void tgc_run(tgc_t *gc) {
+|  tgc_mark(gc);
+|  tgc_sweep(gc);
+
+~~~ 120. use-paused
+--- tgc.c
++++ tgc.c
+@@ -170,7 +170,7 @@
+|
+|  if (tgc_resize(gc)) {
+|    tgc_add_ptr(gc, ptr, size);
+-    if (gc->nitems > gc->mitems) {
++    if (!gc->paused && gc->nitems > gc->mitems) {
+|      tgc_run(gc);
+|    }
+|    return ptr;
+
