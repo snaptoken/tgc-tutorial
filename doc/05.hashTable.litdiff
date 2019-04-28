@@ -1,6 +1,35 @@
-# Hash Table
+# Hash table
 
-~~~ 69. hash
+~~~ 121. stress-test
+--- /dev/null
++++ stress_test.c
+@@ -0,0 +1,24 @@
++#include "tgc.h"
++
++#define MAX_LIVE_ALLOCATIONS 10000
++#define TOTAL_ALLOCATIONS    100000
++
++static tgc_t gc;
++
++void stress_test() {
++  char **data = tgc_alloc(&gc, MAX_LIVE_ALLOCATIONS * sizeof(char*));
++
++  for (int i = 0; i < TOTAL_ALLOCATIONS; i++) {
++    data[i % MAX_LIVE_ALLOCATIONS] = tgc_alloc(&gc, 16);
++  }
++}
++
++int main(int argc, char **argv) {
++  tgc_start(&gc, &argc);
++
++  stress_test();
++
++  tgc_stop(&gc);
++
++  return 0;
++}
+
+~~~ 122. tgc-hash
 --- tgc.c
 +++ tgc.c
 @@ -2,6 +2,10 @@
@@ -15,7 +44,7 @@
 |  tgc_ptr_t item;
 |  size_t i;
 
-~~~ 70. add-ptr-use-hash
+~~~ 123. add-ptr-use-hash
 --- tgc.c
 +++ tgc.c
 @@ -10,16 +10,19 @@
@@ -40,10 +69,10 @@
 |}
 |
 
-~~~ 71. mark-ptr-use-hash
+~~~ 124. mark-ptr-use-hash
 --- tgc.c
 +++ tgc.c
-@@ -53,12 +53,15 @@
+@@ -56,12 +56,16 @@
 |/*** mark and sweep ***/
 |
 |static void tgc_mark_ptr(tgc_t *gc, void *ptr) {
@@ -54,23 +83,25 @@
 |  ||  (uintptr_t)ptr > gc->maxptr) { return; }
 |
 -  for (i = 0; i < gc->nslots; i++) {
-+  i = tgc_hash(ptr) % gc->nslots; j = 0;
++  i = tgc_hash(ptr) % gc->nslots;
++  j = 0;
 +
 +  while (1) {
 +    if (j == gc->nslots) { return; }
 |    if (ptr == gc->items[i].ptr) {
 |      if (gc->items[i].mark) { return; }
 |      gc->items[i].mark = 1;
-@@ -67,6 +70,7 @@
+@@ -71,6 +75,8 @@
 |      }
 |      return;
 |    }
-+    i = (i+1) % gc->nslots; j++;
++    i = (i+1) % gc->nslots;
++    j++;
 |  }
 |}
 |
 
-~~~ 72. resize-readd-ptrs
+~~~ 125. resize-readd-ptrs
 --- tgc.c
 +++ tgc.c
 @@ -29,6 +29,7 @@
@@ -95,194 +126,10 @@
 |  free(old_items);
 |
 
-~~~ 73. add-loadfactor
---- tgc.h
-+++ tgc.h
-@@ -17,7 +17,7 @@
-|  int paused;
-|  uintptr_t minptr, maxptr;
-|  tgc_ptr_t *items;
--  double sweepfactor;
-+  double loadfactor, sweepfactor;
-|  size_t nitems, nslots, mitems;
-|} tgc_t;
-|
-
-~~~ 74. init-loadfactor
+~~~ 126. sweep-while-loop
 --- tgc.c
 +++ tgc.c
-@@ -139,6 +139,7 @@
-|  gc->items = NULL;
-|  gc->minptr = UINTPTR_MAX;
-|  gc->maxptr = 0;
-+  gc->loadfactor = 0.9;
-|  gc->sweepfactor = 0.5;
-|}
-|
-
-~~~ 75. ideal-size
---- tgc.c
-+++ tgc.c
-@@ -28,6 +28,10 @@
-|
-|/*** resize pointer table ***/
-|
-+static size_t tgc_ideal_size(tgc_t *gc, size_t size) {
-+  return (size_t)((double)(size+1) / gc->loadfactor);
-+}
-+
-|static int tgc_resize(tgc_t *gc) {
-|  size_t i;
-|  tgc_ptr_t *old_items = gc->items;
-
-~~~ 76. resize-more
---- tgc.c
-+++ tgc.c
-@@ -59,6 +59,12 @@
-|  return 1;
-|}
-|
-+static int tgc_resize_more(tgc_t *gc) {
-+  size_t new_size = tgc_ideal_size(gc, gc->nitems);
-+  size_t old_size = gc->nslots;
-+  return (new_size > old_size) ? tgc_rehash(gc, new_size) : 1;
-+}
-+
-|/*** mark and sweep ***/
-|
-|static void tgc_mark_ptr(tgc_t *gc, void *ptr) {
-
-~~~ 77. rehash
---- tgc.c
-+++ tgc.c
-@@ -32,14 +32,12 @@
-|  return (size_t)((double)(size+1) / gc->loadfactor);
-|}
-|
--static int tgc_resize(tgc_t *gc) {
-+static int tgc_rehash(tgc_t *gc, size_t new_size) {
-|  size_t i;
-|  tgc_ptr_t *old_items = gc->items;
-|  size_t old_size = gc->nslots;
-|
--  if (gc->nslots >= gc->nitems) return 1;
--
--  gc->nslots = gc->nitems * 2;
-+  gc->nslots = new_size;
-|  gc->items = calloc(gc->nslots, sizeof(tgc_ptr_t));
-|
-|  if (gc->items == NULL) {
-
-~~~ 78. use-resize-more
---- tgc.c
-+++ tgc.c
-@@ -178,7 +178,7 @@
-|  gc->minptr = ((uintptr_t)ptr)        < gc->minptr ?
-|    ((uintptr_t)ptr)        : gc->minptr;
-|
--  if (tgc_resize(gc)) {
-+  if (tgc_resize_more(gc)) {
-|    tgc_add_ptr(gc, ptr, size);
-|    if (!gc->paused && gc->nitems > gc->mitems) {
-|      tgc_run(gc);
-
-~~~ 79. add-primes
---- tgc.c
-+++ tgc.c
-@@ -28,6 +28,19 @@
-|
-|/*** resize pointer table ***/
-|
-+enum {
-+  TGC_PRIMES_COUNT = 24
-+};
-+
-+static const size_t tgc_primes[TGC_PRIMES_COUNT] = {
-+  0,       1,       5,       11,
-+  23,      53,      101,     197,
-+  389,     683,     1259,    2417,
-+  4733,    9371,    18617,   37097,
-+  74093,   148073,  296099,  592019,
-+  1100009, 2200013, 4400021, 8800019
-+};
-+
-|static size_t tgc_ideal_size(tgc_t *gc, size_t size) {
-|  return (size_t)((double)(size+1) / gc->loadfactor);
-|}
-
-~~~ 80. use-primes
---- tgc.c
-+++ tgc.c
-@@ -42,7 +42,12 @@
-|};
-|
-|static size_t tgc_ideal_size(tgc_t *gc, size_t size) {
--  return (size_t)((double)(size+1) / gc->loadfactor);
-+  size_t i;
-+  size = (size_t)((double)(size+1) / gc->loadfactor);
-+  for (i = 0; i < TGC_PRIMES_COUNT; i++) {
-+    if (tgc_primes[i] >= size) { return tgc_primes[i]; }
-+  }
-+  return 0;
-|}
-|
-|static int tgc_rehash(tgc_t *gc, size_t new_size) {
-
-~~~ 81. fix-large-sizes
---- tgc.c
-+++ tgc.c
-@@ -42,11 +42,15 @@
-|};
-|
-|static size_t tgc_ideal_size(tgc_t *gc, size_t size) {
--  size_t i;
-+  size_t i, last;
-|  size = (size_t)((double)(size+1) / gc->loadfactor);
-|  for (i = 0; i < TGC_PRIMES_COUNT; i++) {
-|    if (tgc_primes[i] >= size) { return tgc_primes[i]; }
-|  }
-+  last = tgc_primes[TGC_PRIMES_COUNT-1];
-+  for (i = 0;; i++) {
-+    if (last * i >= size) { return last * i; }
-+  }
-|  return 0;
-|}
-|
-
-~~~ 82. resize-less
---- tgc.c
-+++ tgc.c
-@@ -85,6 +85,12 @@
-|  return (new_size > old_size) ? tgc_rehash(gc, new_size) : 1;
-|}
-|
-+static int tgc_resize_less(tgc_t *gc) {
-+  size_t new_size = tgc_ideal_size(gc, gc->nitems);
-+  size_t old_size = gc->nslots;
-+  return (new_size < old_size) ? tgc_rehash(gc, new_size) : 1;
-+}
-+
-|/*** mark and sweep ***/
-|
-|static void tgc_mark_ptr(tgc_t *gc, void *ptr) {
-
-~~~ 83. call-resize-less
---- tgc.c
-+++ tgc.c
-@@ -161,6 +161,8 @@
-|    gc->items[i].mark = 0;
-|  }
-|
-+  tgc_resize_less(gc);
-+
-|  gc->mitems = gc->nitems + (size_t)(gc->nitems * gc->sweepfactor) + 1;
-|}
-|
-
-~~~ 84. sweep-while-loop
---- tgc.c
-+++ tgc.c
-@@ -149,9 +149,10 @@
+@@ -124,9 +124,10 @@
 |
 |  if (gc->nitems == 0) { return; }
 |
@@ -293,34 +140,31 @@
 +  while (i < gc->nslots) {
 +    if (gc->items[i].ptr == NULL) { i++; continue; }
 +    if (gc->items[i].mark)        { i++; continue; }
+|    printf("[DEBUG] freeing %p\n", gc->items[i].ptr);
 |    free(gc->items[i].ptr);
 |    memset(&gc->items[i], 0, sizeof(tgc_ptr_t));
-|    gc->nitems--;
 
-~~~ 85. linear-probing-invariant
+~~~ 127. linear-probing-invariant
 --- tgc.c
 +++ tgc.c
-@@ -145,7 +145,7 @@
+@@ -118,7 +118,7 @@
 |}
 |
 |static void tgc_sweep(tgc_t *gc) {
 -  size_t i;
 +  size_t i, j, nj, nh;
 |
-|  if (gc->nitems == 0) { return; }
+|  printf("[DEBUG] starting sweep phase\n");
 |
-@@ -153,8 +153,22 @@
-|  while (i < gc->nslots) {
-|    if (gc->items[i].ptr == NULL) { i++; continue; }
-|    if (gc->items[i].mark)        { i++; continue; }
-+
+@@ -131,6 +131,19 @@
+|    printf("[DEBUG] freeing %p\n", gc->items[i].ptr);
 |    free(gc->items[i].ptr);
 |    memset(&gc->items[i], 0, sizeof(tgc_ptr_t));
 +
 +    j = i;
 +    while (1) {
 +      nj = (j+1) % gc->nslots;
-+      nh = tgc_hash(gc->items[nj].ptr) % gc->nitems;
++      nh = tgc_hash(gc->items[nj].ptr) % gc->nslots;
 +      if (gc->items[nj].ptr != NULL && nh != nj) {
 +        memcpy(&gc->items[ j], &gc->items[nj], sizeof(tgc_ptr_t));
 +        memset(&gc->items[nj],              0, sizeof(tgc_ptr_t));
@@ -333,11 +177,11 @@
 |  }
 |
 
-~~~ 86. mark-ptr-stop-search-early
+~~~ 128. mark-ptr-stop-search-early
 --- tgc.c
 +++ tgc.c
-@@ -102,7 +102,7 @@
-|  i = tgc_hash(ptr) % gc->nslots; j = 0;
+@@ -70,7 +70,7 @@
+|  j = 0;
 |
 |  while (1) {
 -    if (j == gc->nslots) { return; }
@@ -346,10 +190,10 @@
 |      if (gc->items[i].mark) { return; }
 |      gc->items[i].mark = 1;
 
-~~~ 87. add-hash
+~~~ 129. add-hash
 --- tgc.h
 +++ tgc.h
-@@ -9,7 +9,7 @@
+@@ -10,7 +10,7 @@
 |typedef struct {
 |  void *ptr;
 |  int mark;
@@ -359,7 +203,7 @@
 |
 |typedef struct {
 
-~~~ 88. set-hash
+~~~ 130. set-hash
 --- tgc.c
 +++ tgc.c
 @@ -15,6 +15,7 @@
@@ -371,7 +215,19 @@
 |  while (1) {
 |    if (gc->items[i].ptr == NULL) {
 
-~~~ 89. add-ptr-hash-zero
+~~~ 131. debug-hash
+--- tgc.c
++++ tgc.c
+@@ -235,6 +235,7 @@
+|
+|  printf("  mark = %d\n", ptr->mark);
+|  printf("  size = %zu\n", ptr->size);
++  printf("  hash = %zu\n", ptr->hash);
+|}
+|
+|void tgc_debug(tgc_t *gc, void (*pretty_print)(tgc_ptr_t*)) {
+
+~~~ 132. add-ptr-hash-zero
 --- tgc.c
 +++ tgc.c
 @@ -8,7 +8,7 @@
@@ -397,10 +253,10 @@
 |    i = (i+1) % gc->nslots;
 |  }
 
-~~~ 90. rehash-hash-zero
+~~~ 133. resize-hash-zero
 --- tgc.c
 +++ tgc.c
-@@ -68,7 +68,7 @@
+@@ -44,7 +44,7 @@
 |  }
 |
 |  for (i = 0; i < old_size; i++) {
@@ -410,10 +266,10 @@
 |    }
 |  }
 
-~~~ 91. mark-ptr-hash-zero
+~~~ 134. mark-ptr-hash-zero
 --- tgc.c
 +++ tgc.c
-@@ -93,7 +93,7 @@
+@@ -60,7 +60,7 @@
 |/*** mark and sweep ***/
 |
 |static void tgc_mark_ptr(tgc_t *gc, void *ptr) {
@@ -422,8 +278,8 @@
 |
 |  if ((uintptr_t)ptr < gc->minptr
 |  ||  (uintptr_t)ptr > gc->maxptr) { return; }
-@@ -101,7 +101,8 @@
-|  i = tgc_hash(ptr) % gc->nslots; j = 0;
+@@ -69,7 +69,8 @@
+|  j = 0;
 |
 |  while (1) {
 -    if (gc->items[i].ptr == NULL || j == gc->nslots) { return; }
@@ -433,10 +289,10 @@
 |      if (gc->items[i].mark) { return; }
 |      gc->items[i].mark = 1;
 
-~~~ 92. sweep-hash-zero
+~~~ 135. sweep-hash-zero
 --- tgc.c
 +++ tgc.c
-@@ -151,8 +151,8 @@
+@@ -126,8 +126,8 @@
 |
 |  i = 0;
 |  while (i < gc->nslots) {
@@ -444,14 +300,14 @@
 -    if (gc->items[i].mark)        { i++; continue; }
 +    if (gc->items[i].hash == 0) { i++; continue; }
 +    if (gc->items[i].mark)      { i++; continue; }
-|
+|    printf("[DEBUG] freeing %p\n", gc->items[i].ptr);
 |    free(gc->items[i].ptr);
 |    memset(&gc->items[i], 0, sizeof(tgc_ptr_t));
-@@ -160,8 +160,8 @@
+@@ -135,8 +135,8 @@
 |    j = i;
 |    while (1) {
 |      nj = (j+1) % gc->nslots;
--      nh = tgc_hash(gc->items[nj].ptr) % gc->nitems;
+-      nh = tgc_hash(gc->items[nj].ptr) % gc->nslots;
 -      if (gc->items[nj].ptr != NULL && nh != nj) {
 +      nh = gc->items[nj].hash;
 +      if (nh != 0 && nh-1 != nj) {
@@ -459,7 +315,7 @@
 |        memset(&gc->items[nj],              0, sizeof(tgc_ptr_t));
 |        j = nj;
 
-~~~ 93. probe
+~~~ 136. tgc-probe
 --- tgc.c
 +++ tgc.c
 @@ -6,6 +6,12 @@
@@ -476,10 +332,10 @@
 |  tgc_ptr_t item;
 |  size_t i, h;
 
-~~~ 94. sweep-robin-hood
+~~~ 137. sweep-robin-hood
 --- tgc.c
 +++ tgc.c
-@@ -167,7 +167,7 @@
+@@ -142,7 +142,7 @@
 |    while (1) {
 |      nj = (j+1) % gc->nslots;
 |      nh = gc->items[nj].hash;
@@ -489,32 +345,31 @@
 |        memset(&gc->items[nj],              0, sizeof(tgc_ptr_t));
 |        j = nj;
 
-~~~ 95. add-ptr-count-iterations
+~~~ 138. add-ptr-count-iterations
 --- tgc.c
 +++ tgc.c
-@@ -14,9 +14,9 @@
+@@ -14,9 +14,10 @@
 |
 |static void tgc_add_ptr(tgc_t *gc, void *ptr, size_t size) {
 |  tgc_ptr_t item;
 -  size_t i, h;
 +  size_t i, j, h;
 |
--  i = tgc_hash(ptr) % gc->nslots;
-+  i = tgc_hash(ptr) % gc->nslots; j = 0;
+|  i = tgc_hash(ptr) % gc->nslots;
++  j = 0;
 |
 |  item.ptr = ptr;
 |  item.mark = 0;
-@@ -27,7 +27,7 @@
-|    h = gc->items[i].hash;
+@@ -28,6 +29,7 @@
 |    if (h == 0) { gc->items[i] = item; return; }
 |    if (gc->items[i].ptr == item.ptr) { return; }
--    i = (i+1) % gc->nslots;
-+    i = (i+1) % gc->nslots; j++;
+|    i = (i+1) % gc->nslots;
++    j++;
 |  }
 |}
 |
 
-~~~ 96. add-ptr-probe
+~~~ 139. add-ptr-probe
 --- tgc.c
 +++ tgc.c
 @@ -14,7 +14,7 @@
@@ -524,18 +379,18 @@
 -  size_t i, j, h;
 +  size_t i, j, h, p;
 |
-|  i = tgc_hash(ptr) % gc->nslots; j = 0;
-|
-@@ -27,6 +27,7 @@
+|  i = tgc_hash(ptr) % gc->nslots;
+|  j = 0;
+@@ -28,6 +28,7 @@
 |    h = gc->items[i].hash;
 |    if (h == 0) { gc->items[i] = item; return; }
 |    if (gc->items[i].ptr == item.ptr) { return; }
 +    p = tgc_probe(gc, i, h);
-|    i = (i+1) % gc->nslots; j++;
+|    i = (i+1) % gc->nslots;
+|    j++;
 |  }
-|}
 
-~~~ 97. add-ptr-robin-hood
+~~~ 140. add-ptr-robin-hood
 --- tgc.c
 +++ tgc.c
 @@ -13,7 +13,7 @@
@@ -546,8 +401,8 @@
 +  tgc_ptr_t item, tmp;
 |  size_t i, j, h, p;
 |
-|  i = tgc_hash(ptr) % gc->nslots; j = 0;
-@@ -28,6 +28,12 @@
+|  i = tgc_hash(ptr) % gc->nslots;
+@@ -29,6 +29,12 @@
 |    if (h == 0) { gc->items[i] = item; return; }
 |    if (gc->items[i].ptr == item.ptr) { return; }
 |    p = tgc_probe(gc, i, h);
@@ -557,14 +412,14 @@
 +      item = tmp;
 +      j = p;
 +    }
-|    i = (i+1) % gc->nslots; j++;
+|    i = (i+1) % gc->nslots;
+|    j++;
 |  }
-|}
 
-~~~ 98. mark-ptr-robin-hood
+~~~ 141. mark-ptr-robin-hood
 --- tgc.c
 +++ tgc.c
-@@ -115,7 +115,7 @@
+@@ -85,7 +85,7 @@
 |
 |  while (1) {
 |    h = gc->items[i].hash;
@@ -573,4 +428,227 @@
 |    if (ptr == gc->items[i].ptr) {
 |      if (gc->items[i].mark) { return; }
 |      gc->items[i].mark = 1;
+
+~~~ 142. more-stress
+--- stress_test.c
++++ stress_test.c
+@@ -1,7 +1,7 @@
+|#include "tgc.h"
+|
+-#define MAX_LIVE_ALLOCATIONS 10000
+-#define TOTAL_ALLOCATIONS    100000
++#define MAX_LIVE_ALLOCATIONS 1000000
++#define TOTAL_ALLOCATIONS    10000000
+|
+|static tgc_t gc;
+|
+
+~~~ 143. add-loadfactor
+--- tgc.h
++++ tgc.h
+@@ -18,7 +18,7 @@
+|  int paused;
+|  uintptr_t minptr, maxptr;
+|  tgc_ptr_t *items;
+-  double sweepfactor;
++  double loadfactor, sweepfactor;
+|  size_t nitems, nslots, mitems;
+|} tgc_t;
+|
+
+~~~ 144. init-loadfactor
+--- tgc.c
++++ tgc.c
+@@ -180,6 +180,7 @@
+|  gc->items = NULL;
+|  gc->minptr = UINTPTR_MAX;
+|  gc->maxptr = 0;
++  gc->loadfactor = 0.9;
+|  gc->sweepfactor = 0.5;
+|
+|  printf("[DEBUG] tgc start\n");
+
+~~~ 145. debug-loadfactor
+--- tgc.c
++++ tgc.c
+@@ -258,6 +258,7 @@
+|  printf("paused = %d\n", gc->paused);
+|  printf("minptr = %p\n", gc->minptr);
+|  printf("maxptr = %p\n", gc->maxptr);
++  printf("loadfactor = %lf\n", gc->loadfactor);
+|  printf("sweepfactor = %lf\n", gc->sweepfactor);
+|  printf("nitems = %zu\n", gc->nitems);
+|  printf("nslots = %zu\n", gc->nslots);
+
+~~~ 146. ideal-size
+--- tgc.c
++++ tgc.c
+@@ -42,6 +42,10 @@
+|
+|/*** resize pointer table ***/
+|
++static size_t tgc_ideal_size(tgc_t *gc, size_t size) {
++  return (size_t)((double)(size+1) / gc->loadfactor);
++}
++
+|static int tgc_resize(tgc_t *gc) {
+|  size_t i;
+|  tgc_ptr_t *old_items = gc->items;
+
+~~~ 147. resize-more
+--- tgc.c
++++ tgc.c
+@@ -76,6 +76,12 @@
+|  return 1;
+|}
+|
++static int tgc_resize_more(tgc_t *gc) {
++  size_t new_size = tgc_ideal_size(gc, gc->nitems);
++  size_t old_size = gc->nslots;
++  return (new_size > old_size) ? tgc_rehash(gc, new_size) : 1;
++}
++
+|/*** mark and sweep ***/
+|
+|static void tgc_mark_ptr(tgc_t *gc, void *ptr) {
+
+~~~ 148. rehash
+--- tgc.c
++++ tgc.c
+@@ -46,14 +46,14 @@
+|  return (size_t)((double)(size+1) / gc->loadfactor);
+|}
+|
+-static int tgc_resize(tgc_t *gc) {
++static int tgc_rehash(tgc_t *gc, size_t new_size) {
+|  size_t i;
+|  tgc_ptr_t *old_items = gc->items;
+|  size_t old_size = gc->nslots;
+|
+|  if (gc->nslots >= gc->nitems) return 1;
+|
+-  gc->nslots = gc->nitems * 2;
++  gc->nslots = new_size;
+|  gc->items = calloc(gc->nslots, sizeof(tgc_ptr_t));
+|
+|  if (gc->items == NULL) {
+
+~~~ 149. use-resize-more
+--- tgc.c
++++ tgc.c
+@@ -226,7 +226,7 @@
+|  gc->minptr = ((uintptr_t)ptr)        < gc->minptr ?
+|    ((uintptr_t)ptr)        : gc->minptr;
+|
+-  if (tgc_resize(gc)) {
++  if (tgc_resize_more(gc)) {
+|    tgc_add_ptr(gc, ptr, size);
+|    if (!gc->paused && gc->nitems > gc->mitems) {
+|      tgc_run(gc);
+
+~~~ 150. add-primes
+--- tgc.c
++++ tgc.c
+@@ -42,6 +42,19 @@
+|
+|/*** resize pointer table ***/
+|
++enum {
++  TGC_PRIMES_COUNT = 24
++};
++
++static const size_t tgc_primes[TGC_PRIMES_COUNT] = {
++  0,       1,       5,       11,
++  23,      53,      101,     197,
++  389,     683,     1259,    2417,
++  4733,    9371,    18617,   37097,
++  74093,   148073,  296099,  592019,
++  1100009, 2200013, 4400021, 8800019
++};
++
+|static size_t tgc_ideal_size(tgc_t *gc, size_t size) {
+|  return (size_t)((double)(size+1) / gc->loadfactor);
+|}
+
+~~~ 151. use-primes
+--- tgc.c
++++ tgc.c
+@@ -56,7 +56,12 @@
+|};
+|
+|static size_t tgc_ideal_size(tgc_t *gc, size_t size) {
+-  return (size_t)((double)(size+1) / gc->loadfactor);
++  size_t i;
++  size = (size_t)((double)(size+1) / gc->loadfactor);
++  for (i = 0; i < TGC_PRIMES_COUNT; i++) {
++    if (tgc_primes[i] >= size) { return tgc_primes[i]; }
++  }
++  return 0;
+|}
+|
+|static int tgc_rehash(tgc_t *gc, size_t new_size) {
+
+~~~ 152. fix-large-sizes
+--- tgc.c
++++ tgc.c
+@@ -56,11 +56,15 @@
+|};
+|
+|static size_t tgc_ideal_size(tgc_t *gc, size_t size) {
+-  size_t i;
++  size_t i, last;
+|  size = (size_t)((double)(size+1) / gc->loadfactor);
+|  for (i = 0; i < TGC_PRIMES_COUNT; i++) {
+|    if (tgc_primes[i] >= size) { return tgc_primes[i]; }
+|  }
++  last = tgc_primes[TGC_PRIMES_COUNT-1];
++  for (i = 0;; i++) {
++    if (last * i >= size) { return last * i; }
++  }
+|  return 0;
+|}
+|
+
+~~~ 153. resize-less
+--- tgc.c
++++ tgc.c
+@@ -104,6 +104,12 @@
+|  return (new_size > old_size) ? tgc_rehash(gc, new_size) : 1;
+|}
+|
++static int tgc_resize_less(tgc_t *gc) {
++  size_t new_size = tgc_ideal_size(gc, gc->nitems);
++  size_t old_size = gc->nslots;
++  return (new_size < old_size) ? tgc_rehash(gc, new_size) : 1;
++}
++
+|/*** mark and sweep ***/
+|
+|static void tgc_mark_ptr(tgc_t *gc, void *ptr) {
+
+~~~ 154. call-resize-less
+--- tgc.c
++++ tgc.c
+@@ -204,6 +204,8 @@
+|    gc->items[i].mark = 0;
+|  }
+|
++  tgc_resize_less(gc);
++
+|  gc->mitems = gc->nitems + (size_t)(gc->nitems * gc->sweepfactor) + 1;
+|}
+|
+
+~~~ 155. xxx-rehash-fix
+--- tgc.c
++++ tgc.c
+@@ -73,8 +73,6 @@
+|  tgc_ptr_t *old_items = gc->items;
+|  size_t old_size = gc->nslots;
+|
+-  if (gc->nslots >= gc->nitems) return 1;
+-
+|  gc->nslots = new_size;
+|  gc->items = calloc(gc->nslots, sizeof(tgc_ptr_t));
+|
 
