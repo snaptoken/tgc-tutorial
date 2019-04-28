@@ -1,0 +1,590 @@
+# Roots and leaves
+
+~~~ 156. change-mark-to-flags
+--- tgc.h
++++ tgc.h
+@@ -7,9 +7,13 @@
+|#include <stdlib.h>
+|#include <string.h>
+|
++enum {
++    TGC_MARK = 0x01
++};
++
+|typedef struct {
+|  void *ptr;
+-  int mark;
++  int flags;
+|  size_t size, hash;
+|} tgc_ptr_t;
+|
+
+~~~ 157. add-ptr-flags
+--- tgc.c
++++ tgc.c
+@@ -12,7 +12,7 @@
+|  return v;
+|}
+|
+-static void tgc_add_ptr(tgc_t *gc, void *ptr, size_t size) {
++static void tgc_add_ptr(tgc_t *gc, void *ptr, size_t size, int flags) {
+|  tgc_ptr_t item, tmp;
+|  size_t i, j, h, p;
+|
+@@ -20,7 +20,7 @@
+|  j = 0;
+|
+|  item.ptr = ptr;
+-  item.mark = 0;
++  item.flags = flags;
+|  item.size = size;
+|  item.hash = i+1;
+|
+
+~~~ 158. rehash-flags
+--- tgc.c
++++ tgc.c
+@@ -84,7 +84,7 @@
+|
+|  for (i = 0; i < old_size; i++) {
+|    if (old_items[i].hash != 0) {
+-      tgc_add_ptr(gc, old_items[i].ptr, old_items[i].size);
++      tgc_add_ptr(gc, old_items[i].ptr, old_items[i].size, old_items[i].flags);
+|    }
+|  }
+|
+
+~~~ 159. add-flags
+--- tgc.c
++++ tgc.c
+@@ -247,7 +247,7 @@
+|
+|/*** allocator functions ***/
+|
+-static void *tgc_add(tgc_t *gc, void *ptr, size_t size) {
++static void *tgc_add(tgc_t *gc, void *ptr, size_t size, int flags) {
+|  gc->nitems++;
+|  gc->maxptr = ((uintptr_t)ptr) + size > gc->maxptr ?
+|    ((uintptr_t)ptr) + size : gc->maxptr;
+@@ -255,7 +255,7 @@
+|    ((uintptr_t)ptr)        : gc->minptr;
+|
+|  if (tgc_resize_more(gc)) {
+-    tgc_add_ptr(gc, ptr, size);
++    tgc_add_ptr(gc, ptr, size, flags);
+|    if (!gc->paused && gc->nitems > gc->mitems) {
+|      tgc_run(gc);
+|    }
+
+~~~ 160. zero-flags
+--- tgc.c
++++ tgc.c
+@@ -271,7 +271,7 @@
+|  void *ptr = malloc(size);
+|  if (ptr != NULL) {
+|    printf("[DEBUG] allocated %zu bytes at %p\n", size, ptr);
+-    ptr = tgc_add(gc, ptr, size);
++    ptr = tgc_add(gc, ptr, size, 0);
+|  }
+|  return ptr;
+|}
+
+~~~ 161. mark-ptr-flags
+--- tgc.c
++++ tgc.c
+@@ -123,8 +123,8 @@
+|    h = gc->items[i].hash;
+|    if (h == 0 || j > tgc_probe(gc, i, h)) { return; }
+|    if (ptr == gc->items[i].ptr) {
+-      if (gc->items[i].mark) { return; }
+-      gc->items[i].mark = 1;
++      if (gc->items[i].flags & TGC_MARK) { return; }
++      gc->items[i].flags |= TGC_MARK;
+|      printf("[DEBUG] marked %p\n", ptr);
+|      for (k = 0; k < gc->items[i].size/sizeof(void*); k++) {
+|        tgc_mark_ptr(gc, ((void**)gc->items[i].ptr)[k]);
+
+~~~ 162. sweep-flags
+--- tgc.c
++++ tgc.c
+@@ -177,8 +177,8 @@
+|
+|  i = 0;
+|  while (i < gc->nslots) {
+-    if (gc->items[i].hash == 0) { i++; continue; }
+-    if (gc->items[i].mark)      { i++; continue; }
++    if (gc->items[i].hash ==        0) { i++; continue; }
++    if (gc->items[i].flags & TGC_MARK) { i++; continue; }
+|    printf("[DEBUG] freeing %p\n", gc->items[i].ptr);
+|    free(gc->items[i].ptr);
+|    memset(&gc->items[i], 0, sizeof(tgc_ptr_t));
+
+~~~ 163. sweep-reset-mark-flag
+--- tgc.c
++++ tgc.c
+@@ -199,7 +199,7 @@
+|  }
+|
+|  for (i = 0; i < gc->nslots; i++) {
+-    gc->items[i].mark = 0;
++    gc->items[i].flags &= ~TGC_MARK;
+|  }
+|
+|  tgc_resize_less(gc);
+
+~~~ 164. debug-flags
+--- tgc.c
++++ tgc.c
+@@ -286,7 +286,10 @@
+|  }
+|  printf("\n");
+|
+-  printf("  mark = %d\n", ptr->mark);
++  printf("  flags = %d", ptr->flags);
++  if (ptr->flags & TGC_MARK) { printf(" TGC_MARK"); }
++  printf("\n");
++
+|  printf("  size = %zu\n", ptr->size);
+|  printf("  hash = %zu\n", ptr->hash);
+|}
+
+~~~ 165. static-todo
+--- todo.c
++++ todo.c
+@@ -11,20 +11,23 @@
+|  struct TodoItem* next;
+|} TodoItem;
+|
+-void todo_print(TodoItem* todo) {
++static TodoItem* todo;
++
++void todo_print() {
+|  if (todo == NULL) {
+|    printf("No todos! :D\n");
+|  }
+|
+|  int id = 1;
+-  while (todo) {
+-    printf("%d. %s\n", id, todo->description);
+-    todo = todo->next;
++  TodoItem* cur = todo;
++  while (cur) {
++    printf("%d. %s\n", id, cur->description);
++    cur = cur->next;
+|    id++;
+|  }
+|}
+|
+-TodoItem* todo_add(TodoItem* todo, const char* description) {
++void todo_add(const char* description) {
+|  TodoItem* todo_item = (TodoItem*)tgc_alloc(&gc, sizeof(TodoItem));
+|  size_t len = strlen(description);
+|
+@@ -32,12 +35,13 @@
+|  todo_item->description = (char*)tgc_alloc(&gc, len + 1);
+|  strcpy(todo_item->description, description);
+|
+-  return todo_item;
++  todo = todo_item;
+|}
+|
+-TodoItem* todo_remove(TodoItem* todo, int index) {
++void todo_remove(int index) {
+|  if (index == 1 && todo) {
+-    return todo->next;
++    todo = todo->next;
++    return;
+|  }
+|
+|  int id = 1;
+@@ -52,13 +56,12 @@
+|    cur = cur->next;
+|    id++;
+|  }
+-
+-  return todo;
+|}
+|
+-TodoItem* todo_snip(TodoItem* todo, int index) {
++void todo_snip(int index) {
+|  if (index <= 1) {
+-    return NULL;
++    todo = NULL;
++    return;
+|  }
+|
+|  int id = 1;
+@@ -71,8 +74,6 @@
+|    cur = cur->next;
+|    id++;
+|  }
+-
+-  return todo;
+|}
+|
+|void pretty_print(tgc_ptr_t* ptr) {
+@@ -82,19 +83,18 @@
+|  if (*byte == '\0') {
+|    printf("string \"%s\"", ptr->ptr);
+|  } else {
+-    TodoItem* todo = (TodoItem*)ptr->ptr;
++    TodoItem* todo_item = (TodoItem*)ptr->ptr;
+|    printf("TodoItem { description = \"%s\", next = %p }",
+-           todo->description, todo->next);
++           todo_item->description, todo_item->next);
+|  }
+|}
+|
+|void todo_cli() {
+|  char input[1024];
+|  int quitting = 0;
+-  TodoItem* todo = NULL;
+|
+|  while (!quitting) {
+-    todo_print(todo);
++    todo_print();
+|
+|    printf("todo> ");
+|    fflush(stdout);
+@@ -107,13 +107,13 @@
+|
+|      switch (input[0]) {
+|        case '+':
+-          todo = todo_add(todo, &input[1]);
++          todo_add(&input[1]);
+|          break;
+|        case '-':
+-          todo = todo_remove(todo, atoi(&input[1]));
++          todo_remove(atoi(&input[1]));
+|          break;
+|        case '/':
+-          todo = todo_snip(todo, atoi(&input[1]));
++          todo_snip(atoi(&input[1]));
+|          break;
+|        case 'p':
+|          tgc_debug(&gc, pretty_print);
+
+~~~ 166. more-indirection
+--- todo.c
++++ todo.c
+@@ -11,15 +11,15 @@
+|  struct TodoItem* next;
+|} TodoItem;
+|
+-static TodoItem* todo;
++static TodoItem** todo;
+|
+|void todo_print() {
+-  if (todo == NULL) {
++  if (*todo == NULL) {
+|    printf("No todos! :D\n");
+|  }
+|
+|  int id = 1;
+-  TodoItem* cur = todo;
++  TodoItem* cur = *todo;
+|  while (cur) {
+|    printf("%d. %s\n", id, cur->description);
+|    cur = cur->next;
+@@ -31,21 +31,21 @@
+|  TodoItem* todo_item = (TodoItem*)tgc_alloc(&gc, sizeof(TodoItem));
+|  size_t len = strlen(description);
+|
+-  todo_item->next = todo;
++  todo_item->next = *todo;
+|  todo_item->description = (char*)tgc_alloc(&gc, len + 1);
+|  strcpy(todo_item->description, description);
+|
+-  todo = todo_item;
++  *todo = todo_item;
+|}
+|
+|void todo_remove(int index) {
+-  if (index == 1 && todo) {
+-    todo = todo->next;
++  if (index == 1 && *todo) {
++    *todo = (*todo)->next;
+|    return;
+|  }
+|
+|  int id = 1;
+-  TodoItem* cur = todo;
++  TodoItem* cur = *todo;
+|  while (cur) {
+|    if (id == index - 1) {
+|      if (cur->next) {
+@@ -60,12 +60,12 @@
+|
+|void todo_snip(int index) {
+|  if (index <= 1) {
+-    todo = NULL;
++    *todo = NULL;
+|    return;
+|  }
+|
+|  int id = 1;
+-  TodoItem* cur = todo;
++  TodoItem* cur = *todo;
+|  while (cur) {
+|    if (id == index - 1) {
+|      cur->next = NULL;
+@@ -93,6 +93,9 @@
+|  char input[1024];
+|  int quitting = 0;
+|
++  todo = tgc_alloc(&gc, sizeof(TodoItem**));
++  *todo = NULL;
++
+|  while (!quitting) {
+|    todo_print();
+|
+
+~~~ 167. add-root-flag
+--- tgc.h
++++ tgc.h
+@@ -8,7 +8,8 @@
+|#include <string.h>
+|
+|enum {
+-    TGC_MARK = 0x01
++    TGC_MARK = 0x01,
++    TGC_ROOT = 0x02
+|};
+|
+|typedef struct {
+
+~~~ 168. mark-roots
+--- tgc.c
++++ tgc.c
+@@ -154,6 +154,7 @@
+|}
+|
+|static void tgc_mark(tgc_t *gc) {
++  size_t i, k;
+|  jmp_buf env;
+|  void (*volatile mark_stack)(tgc_t*) = tgc_mark_stack;
+|
+@@ -161,6 +162,20 @@
+|
+|  if (gc->nitems == 0) { return; }
+|
++  printf("[DEBUG] marking roots\n");
++
++  for (i = 0; i < gc->nslots; i++) {
++    if (gc->items[i].hash ==        0) { continue; }
++    if (gc->items[i].flags & TGC_MARK) { continue; }
++    if (gc->items[i].flags & TGC_ROOT) {
++      gc->items[i].flags |= TGC_MARK;
++      printf("[DEBUG] marked %p\n", gc->items[i].ptr);
++      for (k = 0; k < gc->items[i].size/sizeof(void*); k++) {
++        tgc_mark_ptr(gc, ((void**)gc->items[i].ptr)[k]);
++      }
++    }
++  }
++
+|  printf("[DEBUG] marking stack\n");
+|
+|  memset(&env, 0, sizeof(jmp_buf));
+
+~~~ 169. sweep-skip-roots
+--- tgc.c
++++ tgc.c
+@@ -194,6 +194,7 @@
+|  while (i < gc->nslots) {
+|    if (gc->items[i].hash ==        0) { i++; continue; }
+|    if (gc->items[i].flags & TGC_MARK) { i++; continue; }
++    if (gc->items[i].flags & TGC_ROOT) { i++; continue; }
+|    printf("[DEBUG] freeing %p\n", gc->items[i].ptr);
+|    free(gc->items[i].ptr);
+|    memset(&gc->items[i], 0, sizeof(tgc_ptr_t));
+
+~~~ 170. alloc-opt-prototype
+--- tgc.h
++++ tgc.h
+@@ -35,6 +35,8 @@
+|
+|void *tgc_alloc(tgc_t *gc, size_t size);
+|
++void *tgc_alloc_opt(tgc_t *gc, size_t size, int flags);
++
+|void tgc_debug(tgc_t *gc, void (*pretty_print)(tgc_ptr_t*));
+|
+|#endif
+
+~~~ 171. alloc-opt
+--- tgc.c
++++ tgc.c
+@@ -283,11 +283,11 @@
+|  }
+|}
+|
+-void *tgc_alloc(tgc_t *gc, size_t size) {
++void *tgc_alloc_opt(tgc_t *gc, size_t size, int flags) {
+|  void *ptr = malloc(size);
+|  if (ptr != NULL) {
+|    printf("[DEBUG] allocated %zu bytes at %p\n", size, ptr);
+-    ptr = tgc_add(gc, ptr, size, 0);
++    ptr = tgc_add(gc, ptr, size, flags);
+|  }
+|  return ptr;
+|}
+
+~~~ 172. alloc-delegates
+--- tgc.c
++++ tgc.c
+@@ -283,6 +283,10 @@
+|  }
+|}
+|
++void *tgc_alloc(tgc_t *gc, size_t size) {
++  return tgc_alloc_opt(gc, size, 0);
++}
++
+|void *tgc_alloc_opt(tgc_t *gc, size_t size, int flags) {
+|  void *ptr = malloc(size);
+|  if (ptr != NULL) {
+
+~~~ 173. use-alloc-opt
+--- todo.c
++++ todo.c
+@@ -93,7 +93,7 @@
+|  char input[1024];
+|  int quitting = 0;
+|
+-  todo = tgc_alloc(&gc, sizeof(TodoItem**));
++  todo = tgc_alloc_opt(&gc, sizeof(TodoItem**), TGC_ROOT);
+|  *todo = NULL;
+|
+|  while (!quitting) {
+
+~~~ 174. debug-root-flag
+--- tgc.c
++++ tgc.c
+@@ -308,6 +308,7 @@
+|
+|  printf("  flags = %d", ptr->flags);
+|  if (ptr->flags & TGC_MARK) { printf(" TGC_MARK"); }
++  if (ptr->flags & TGC_ROOT) { printf(" TGC_ROOT"); }
+|  printf("\n");
+|
+|  printf("  size = %zu\n", ptr->size);
+
+~~~ 175. pretty-print-pointer
+--- todo.c
++++ todo.c
+@@ -80,7 +80,9 @@
+|  char *byte = ptr->ptr;
+|  while (isgraph(*byte)) { byte++; }
+|
+-  if (*byte == '\0') {
++  if (ptr->flags & TGC_ROOT) {
++    printf("root pointer %p", *(TodoItem**)ptr->ptr);
++  } else if (*byte == '\0') {
+|    printf("string \"%s\"", ptr->ptr);
+|  } else {
+|    TodoItem* todo_item = (TodoItem*)ptr->ptr;
+
+~~~ 176. add-leaf-flag
+--- tgc.h
++++ tgc.h
+@@ -9,7 +9,8 @@
+|
+|enum {
+|    TGC_MARK = 0x01,
+-    TGC_ROOT = 0x02
++    TGC_ROOT = 0x02,
++    TGC_LEAF = 0x04
+|};
+|
+|typedef struct {
+
+~~~ 177. mark-ptr-leaf
+--- tgc.c
++++ tgc.c
+@@ -126,6 +126,7 @@
+|      if (gc->items[i].flags & TGC_MARK) { return; }
+|      gc->items[i].flags |= TGC_MARK;
+|      printf("[DEBUG] marked %p\n", ptr);
++      if (gc->items[i].flags & TGC_LEAF) { return; }
+|      for (k = 0; k < gc->items[i].size/sizeof(void*); k++) {
+|        tgc_mark_ptr(gc, ((void**)gc->items[i].ptr)[k]);
+|      }
+
+~~~ 178. mark-leaf
+--- tgc.c
++++ tgc.c
+@@ -171,6 +171,7 @@
+|    if (gc->items[i].flags & TGC_ROOT) {
+|      gc->items[i].flags |= TGC_MARK;
+|      printf("[DEBUG] marked %p\n", gc->items[i].ptr);
++      if (gc->items[i].flags & TGC_LEAF) { continue; }
+|      for (k = 0; k < gc->items[i].size/sizeof(void*); k++) {
+|        tgc_mark_ptr(gc, ((void**)gc->items[i].ptr)[k]);
+|      }
+
+~~~ 179. debug-leaf-flag
+--- tgc.c
++++ tgc.c
+@@ -311,6 +311,7 @@
+|  printf("  flags = %d", ptr->flags);
+|  if (ptr->flags & TGC_MARK) { printf(" TGC_MARK"); }
+|  if (ptr->flags & TGC_ROOT) { printf(" TGC_ROOT"); }
++  if (ptr->flags & TGC_LEAF) { printf(" TGC_LEAF"); }
+|  printf("\n");
+|
+|  printf("  size = %zu\n", ptr->size);
+
+~~~ 180. make-strings-leafs
+--- todo.c
++++ todo.c
+@@ -32,7 +32,7 @@
+|  size_t len = strlen(description);
+|
+|  todo_item->next = *todo;
+-  todo_item->description = (char*)tgc_alloc(&gc, len + 1);
++  todo_item->description = (char*)tgc_alloc_opt(&gc, len + 1, TGC_LEAF);
+|  strcpy(todo_item->description, description);
+|
+|  *todo = todo_item;
+
+~~~ 181. improve-pretty-print
+--- todo.c
++++ todo.c
+@@ -77,12 +77,9 @@
+|}
+|
+|void pretty_print(tgc_ptr_t* ptr) {
+-  char *byte = ptr->ptr;
+-  while (isgraph(*byte)) { byte++; }
+-
+|  if (ptr->flags & TGC_ROOT) {
+|    printf("root pointer %p", *(TodoItem**)ptr->ptr);
+-  } else if (*byte == '\0') {
++  } else if (ptr->flags & TGC_LEAF) {
+|    printf("string \"%s\"", ptr->ptr);
+|  } else {
+|    TodoItem* todo_item = (TodoItem*)ptr->ptr;
+
+~~~ 182. leaf-stress-test
+--- stress_test.c
++++ stress_test.c
+@@ -1,7 +1,7 @@
+|#include "tgc.h"
+|
+-#define MAX_LIVE_ALLOCATIONS 1000000
+-#define TOTAL_ALLOCATIONS    10000000
++#define MAX_LIVE_ALLOCATIONS 100000
++#define TOTAL_ALLOCATIONS    1000000
+|
+|static tgc_t gc;
+|
+@@ -9,7 +9,7 @@
+|  char **data = tgc_alloc(&gc, MAX_LIVE_ALLOCATIONS * sizeof(char*));
+|
+|  for (int i = 0; i < TOTAL_ALLOCATIONS; i++) {
+-    data[i % MAX_LIVE_ALLOCATIONS] = tgc_alloc(&gc, 16);
++    data[i % MAX_LIVE_ALLOCATIONS] = tgc_alloc_opt(&gc, 1024, TGC_LEAF);
+|  }
+|}
+|
+

@@ -1,0 +1,378 @@
+# Completing the API
+
+~~~ 183. get-set-flags-prototypes
+--- tgc.h
++++ tgc.h
+@@ -38,6 +38,9 @@
+|
+|void *tgc_alloc_opt(tgc_t *gc, size_t size, int flags);
+|
++int tgc_get_flags(tgc_t *gc, void *ptr);
++void tgc_set_flags(tgc_t *gc, void *ptr, int flags);
++
+|void tgc_debug(tgc_t *gc, void (*pretty_print)(tgc_ptr_t*));
+|
+|#endif
+
+~~~ 184. get-set-flags
+--- tgc.c
++++ tgc.c
+@@ -298,6 +298,19 @@
+|  return ptr;
+|}
+|
++/*** getters and setters ***/
++
++int tgc_get_flags(tgc_t *gc, void *ptr) {
++  tgc_ptr_t *p = tgc_get_ptr(gc, ptr);
++  if (p) { return p->flags; }
++  return 0;
++}
++
++void tgc_set_flags(tgc_t *gc, void *ptr, int flags) {
++  tgc_ptr_t *p = tgc_get_ptr(gc, ptr);
++  if (p) { p->flags = flags; }
++}
++
+|/*** debugging ***/
+|
+|static void tgc_debug_ptr(tgc_ptr_t *ptr, void (*pretty_print)(tgc_ptr_t*)) {
+
+~~~ 185. get-ptr
+--- tgc.c
++++ tgc.c
+@@ -12,6 +12,21 @@
+|  return v;
+|}
+|
++static tgc_ptr_t *tgc_get_ptr(tgc_t *gc, void *ptr) {
++  size_t i, j, h;
++
++  i = tgc_hash(ptr) % gc->nslots;
++  j = 0;
++
++  while (1) {
++    h = gc->items[i].hash;
++    if (h == 0 || j > tgc_probe(gc, i, h)) { return NULL; }
++    if (gc->items[i].ptr == ptr) { return &gc->items[i]; }
++    i = (i+1) % gc->nslots;
++    j++;
++  }
++}
++
+|static void tgc_add_ptr(tgc_t *gc, void *ptr, size_t size, int flags) {
+|  tgc_ptr_t item, tmp;
+|  size_t i, j, h, p;
+
+~~~ 186. test-get-flags
+--- todo.c
++++ todo.c
+@@ -77,9 +77,11 @@
+|}
+|
+|void pretty_print(tgc_ptr_t* ptr) {
+-  if (ptr->flags & TGC_ROOT) {
++  int flags = tgc_get_flags(&gc, ptr->ptr);
++
++  if (flags & TGC_ROOT) {
+|    printf("root pointer %p", *(TodoItem**)ptr->ptr);
+-  } else if (ptr->flags & TGC_LEAF) {
++  } else if (flags & TGC_LEAF) {
+|    printf("string \"%s\"", ptr->ptr);
+|  } else {
+|    TodoItem* todo_item = (TodoItem*)ptr->ptr;
+
+~~~ 187. get-size-prototype
+--- tgc.h
++++ tgc.h
+@@ -40,6 +40,7 @@
+|
+|int tgc_get_flags(tgc_t *gc, void *ptr);
+|void tgc_set_flags(tgc_t *gc, void *ptr, int flags);
++size_t tgc_get_size(tgc_t *gc, void *ptr);
+|
+|void tgc_debug(tgc_t *gc, void (*pretty_print)(tgc_ptr_t*));
+|
+
+~~~ 188. get-size
+--- tgc.c
++++ tgc.c
+@@ -326,6 +326,12 @@
+|  if (p) { p->flags = flags; }
+|}
+|
++size_t tgc_get_size(tgc_t *gc, void *ptr) {
++  tgc_ptr_t *p = tgc_get_ptr(gc, ptr);
++  if (p) { return p->size; }
++  return 0;
++}
++
+|/*** debugging ***/
+|
+|static void tgc_debug_ptr(tgc_ptr_t *ptr, void (*pretty_print)(tgc_ptr_t*)) {
+
+~~~ 189. calloc-prototypes
+--- tgc.h
++++ tgc.h
+@@ -35,8 +35,10 @@
+|void tgc_run(tgc_t *gc);
+|
+|void *tgc_alloc(tgc_t *gc, size_t size);
++void *tgc_calloc(tgc_t *gc, size_t num, size_t size);
+|
+|void *tgc_alloc_opt(tgc_t *gc, size_t size, int flags);
++void *tgc_calloc_opt(tgc_t *gc, size_t num, size_t size, int flags);
+|
+|int tgc_get_flags(tgc_t *gc, void *ptr);
+|void tgc_set_flags(tgc_t *gc, void *ptr, int flags);
+
+~~~ 190. calloc
+--- tgc.c
++++ tgc.c
+@@ -313,6 +313,19 @@
+|  return ptr;
+|}
+|
++void *tgc_calloc(tgc_t *gc, size_t num, size_t size) {
++  return tgc_calloc_opt(gc, num, size, 0);
++}
++
++void *tgc_calloc_opt(tgc_t *gc, size_t num, size_t size, int flags) {
++  void *ptr = calloc(num, size);
++  if (ptr != NULL) {
++    printf("[DEBUG] callocated %zu bytes at %p\n", num * size, ptr);
++    ptr = tgc_add(gc, ptr, num * size, flags);
++  }
++  return ptr;
++}
++
+|/*** getters and setters ***/
+|
+|int tgc_get_flags(tgc_t *gc, void *ptr) {
+
+~~~ 191. free-prototype
+--- tgc.h
++++ tgc.h
+@@ -36,6 +36,7 @@
+|
+|void *tgc_alloc(tgc_t *gc, size_t size);
+|void *tgc_calloc(tgc_t *gc, size_t num, size_t size);
++void tgc_free(tgc_t *gc, void *ptr);
+|
+|void *tgc_alloc_opt(tgc_t *gc, size_t size, int flags);
+|void *tgc_calloc_opt(tgc_t *gc, size_t num, size_t size, int flags);
+
+~~~ 192. free
+--- tgc.c
++++ tgc.c
+@@ -326,6 +326,14 @@
+|  return ptr;
+|}
+|
++void tgc_free(tgc_t *gc, void *ptr) {
++  tgc_ptr_t *p = tgc_get_ptr(gc, ptr);
++  if (p) {
++    free(ptr);
++    tgc_rem(gc, ptr);
++  }
++}
++
+|/*** getters and setters ***/
+|
+|int tgc_get_flags(tgc_t *gc, void *ptr) {
+
+~~~ 193. rem
+--- tgc.c
++++ tgc.c
+@@ -300,6 +300,12 @@
+|  }
+|}
+|
++static void tgc_rem(tgc_t *gc, void *ptr) {
++  tgc_rem_ptr(gc, ptr);
++  tgc_resize_less(gc);
++  gc->mitems = gc->nitems + (size_t)(gc->nitems * gc->sweepfactor) + 1;
++}
++
+|void *tgc_alloc(tgc_t *gc, size_t size) {
+|  return tgc_alloc_opt(gc, size, 0);
+|}
+
+~~~ 194. rem-ptr
+--- tgc.c
++++ tgc.c
+@@ -55,6 +55,27 @@
+|  }
+|}
+|
++static void tgc_rem_ptr(tgc_t *gc, void *ptr) {
++  size_t i, j, h;
++
++  if (gc->nitems == 0) { return; }
++
++  i = tgc_hash(ptr) % gc->nslots;
++  j = 0;
++
++  while (1) {
++    h = gc->items[i].hash;
++    if (h == 0 || j > tgc_probe(gc, i, h)) { return; }
++    if (gc->items[i].ptr == ptr) {
++      memset(&gc->items[i], 0, sizeof(tgc_ptr_t));
++      gc->nitems--;
++      return;
++    }
++    i = (i+1) % gc->nslots;
++    j++;
++  }
++}
++
+|/*** resize pointer table ***/
+|
+|enum {
+
+~~~ 195. rem-ptr-linear-probing-invariant
+--- tgc.c
++++ tgc.c
+@@ -56,7 +56,7 @@
+|}
+|
+|static void tgc_rem_ptr(tgc_t *gc, void *ptr) {
+-  size_t i, j, h;
++  size_t i, j, h, nj, nh;
+|
+|  if (gc->nitems == 0) { return; }
+|
+@@ -68,6 +68,18 @@
+|    if (h == 0 || j > tgc_probe(gc, i, h)) { return; }
+|    if (gc->items[i].ptr == ptr) {
+|      memset(&gc->items[i], 0, sizeof(tgc_ptr_t));
++      j = i;
++      while (1) {
++        nj = (j+1) % gc->nslots;
++        nh = gc->items[nj].hash;
++        if (nh != 0 && tgc_probe(gc, nj, nh) > 0) {
++          memcpy(&gc->items[ j], &gc->items[nj], sizeof(tgc_ptr_t));
++          memset(&gc->items[nj],              0, sizeof(tgc_ptr_t));
++          j = nj;
++        } else {
++          break;
++        }
++      }
+|      gc->nitems--;
+|      return;
+|    }
+
+~~~ 196. stress-test-free
+--- stress_test.c
++++ stress_test.c
+@@ -10,6 +10,7 @@
+|
+|  for (int i = 0; i < TOTAL_ALLOCATIONS; i++) {
+|    data[i % MAX_LIVE_ALLOCATIONS] = tgc_alloc_opt(&gc, 1024, TGC_LEAF);
++    tgc_free(&gc, data[i % MAX_LIVE_ALLOCATIONS]);
+|  }
+|}
+|
+
+~~~ 197. realloc-prototype
+--- tgc.h
++++ tgc.h
+@@ -36,6 +36,7 @@
+|
+|void *tgc_alloc(tgc_t *gc, size_t size);
+|void *tgc_calloc(tgc_t *gc, size_t num, size_t size);
++void *tgc_realloc(tgc_t *gc, void *ptr, size_t size);
+|void tgc_free(tgc_t *gc, void *ptr);
+|
+|void *tgc_alloc_opt(tgc_t *gc, size_t size, int flags);
+
+~~~ 198. realloc
+--- tgc.c
++++ tgc.c
+@@ -365,6 +365,29 @@
+|  return ptr;
+|}
+|
++void *tgc_realloc(tgc_t *gc, void *ptr, size_t size) {
++  tgc_ptr_t *p;
++  void *qtr = realloc(ptr, size);
++
++  printf("[DEBUG] reallocated %zu bytes at %p\n", size, qtr);
++
++  p = tgc_get_ptr(gc, ptr);
++
++  if (p && qtr == ptr) {
++    p->size = size;
++    return qtr;
++  }
++
++  if (p && qtr != ptr) {
++    int flags = p->flags;
++    tgc_rem(gc, ptr);
++    tgc_add(gc, qtr, size, flags);
++    return qtr;
++  }
++
++  return NULL;
++}
++
+|void tgc_free(tgc_t *gc, void *ptr) {
+|  tgc_ptr_t *p = tgc_get_ptr(gc, ptr);
+|  if (p) {
+
+~~~ 199. realloc-handle-failure
+--- tgc.c
++++ tgc.c
+@@ -369,6 +369,11 @@
+|  tgc_ptr_t *p;
+|  void *qtr = realloc(ptr, size);
+|
++  if (qtr == NULL) {
++    tgc_rem(gc, ptr);
++    return qtr;
++  }
++
+|  printf("[DEBUG] reallocated %zu bytes at %p\n", size, qtr);
+|
+|  p = tgc_get_ptr(gc, ptr);
+
+~~~ 200. realloc-handle-null
+--- tgc.c
++++ tgc.c
+@@ -376,6 +376,11 @@
+|
+|  printf("[DEBUG] reallocated %zu bytes at %p\n", size, qtr);
+|
++  if (ptr == NULL) {
++    tgc_add(gc, qtr, size, 0);
++    return qtr;
++  }
++
+|  p = tgc_get_ptr(gc, ptr);
+|
+|  if (p && qtr == ptr) {
+
+~~~ 201. stress-test-realloc
+--- stress_test.c
++++ stress_test.c
+@@ -1,3 +1,4 @@
++#include <stdlib.h>
+|#include "tgc.h"
+|
+|#define MAX_LIVE_ALLOCATIONS 100000
+@@ -6,11 +7,11 @@
+|static tgc_t gc;
+|
+|void stress_test() {
+-  char **data = tgc_alloc(&gc, MAX_LIVE_ALLOCATIONS * sizeof(char*));
++  char **data = tgc_calloc(&gc, MAX_LIVE_ALLOCATIONS, sizeof(char*));
+|
+|  for (int i = 0; i < TOTAL_ALLOCATIONS; i++) {
+-    data[i % MAX_LIVE_ALLOCATIONS] = tgc_alloc_opt(&gc, 1024, TGC_LEAF);
+-    tgc_free(&gc, data[i % MAX_LIVE_ALLOCATIONS]);
++    data[i % MAX_LIVE_ALLOCATIONS] =
++      tgc_realloc(&gc, data[i % MAX_LIVE_ALLOCATIONS], rand() % 1024 + 1);
+|  }
+|}
+|
+
