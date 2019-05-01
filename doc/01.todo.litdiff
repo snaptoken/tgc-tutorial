@@ -1,5 +1,17 @@
 # Linked todo list
 
+It's nice to build things in small, satisfying steps. To be able to run the code after making each change, and immediately *see* the change in action.
+
+This gets a bit tricky when building a garbage collector. Garbage collectors are very behind-the-scenes. If it's doing its job well, then there are no observable effects to the user. If it's not doing its job well, then you might see drops in performance, or your program might leak memory until it eventually runs out. But you'd need a very resource-intensive program to get into either of these situations.
+
+To gain visibility into the thing we are building, we'll use *print statements* that reveal what the garbage collector is doing. To test it, we'll build a little todo app that stores the todo list as a linked list. Linked lists are known for being the least desirable data structure for most use cases, but it turns out they are perfect for testing a garbage collector.
+
+We'll also build a super secret *operator interface* into our app, which lets you see the entire state of the garbage collector at any time, if you know what command to type.
+
+## Let's start things off...
+
+...with a `main()`!
+
 ~~~ 1. main
 --- /dev/null
 +++ todo.c
