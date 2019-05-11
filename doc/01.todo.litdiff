@@ -1,16 +1,22 @@
 # Linked todo list
 
-It's nice to build things in small, satisfying steps. To be able to run the code after making each change, and immediately *see* the change in action.
+Hi there! Please, grab a beverage and get comfy. We're going to build a garbage collector together! :D
 
-This gets a bit tricky when building a garbage collector. Garbage collectors are very behind-the-scenes. If it's doing its job well, then there are no observable effects to the user. If it's not doing its job well, then you might see drops in performance, or your program might leak memory until it eventually runs out. But you'd need a very resource-intensive program to get into either of these situations.
+... So, um, where do we begin with something like this?
 
-To gain visibility into the thing we are building, we'll use *print statements* that reveal what the garbage collector is doing. To test it, we'll build a little todo app that stores the todo list as a linked list. Linked lists are known for being the least desirable data structure for most use cases, but it turns out they are perfect for testing a garbage collector.
+Usually I like to build things in small, satisfying steps---to be able to run the code after making each change, and *see* the change in action.
 
-We'll also build a super secret *operator interface* into our app, which lets you see the entire state of the garbage collector at any time, if you know what command to type.
+This gets tricky when building a garbage collector. Garbage collectors are very behind-the-scenes. If they're doing their job well, they don't really have any observable effects to the user.
 
-## Let's start things off...
+To gain visibility into our garbage collector, we'll use *print statements* (a simple way of *logging*) to reveal what it's doing back there. We'll also build a super secret *operator interface*, which lets you see the entire state of the garbage collector at any time---if you know what command to type.
 
-...with a `main()`!
+To test our garbage collector, we'll build a little todo app that stores the todo list as a linked list. Linked lists are an odd choice of data structure for a todo app, but it turns out they are perfect for testing a garbage collector!
+
+So, in this chapter we'll start by building the todo app, *without* any garbage collection yet. That means we'll have to `free()` our memory manually. Manual memory management is painful, but this pain will give us motivation to start building our garbage collector in the next chapter.
+
+## Creating an interactive command line app
+
+Create a file named `todo.c` and start it out with a `main()` function:
 
 ~~~ 1. main
 --- /dev/null
