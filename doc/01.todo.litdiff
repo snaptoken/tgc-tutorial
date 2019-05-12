@@ -109,9 +109,9 @@ We should also handle end-of-file, as an alternative way of quitting. Users ofte
 
 ## Adding todos
 
-The `+` command will add an item to the todo list. Anything coming after the `+` will be the **description** of the todo item. So a full command might look like `+Take the lettuce out of the drier`.
+The `+` command will add an item to the todo list. Whatever comes after the `+` will be the description of the todo item. So you could write `+Take the lettuce out of the drier`.
 
-As I mentioned earlier, we're going to use a linked list data structure to store the todo list. Each todo item will contain the todo description (a string), and a pointer to the next todo item in the list. Let's make a `TodoItem` struct for this.
+As I mentioned earlier, we're going to store the todo list as a linked list. Each todo item will contain the todo description (a string), and a pointer to the next todo item in the list. Let's make a `TodoItem` struct for this.
 
 ~~~ 6. todo-struct
 --- todo.c
@@ -128,7 +128,7 @@ As I mentioned earlier, we're going to use a linked list data structure to store
 |  char input[1024];
 |  int quitting = 0;
 
-Our todo list will then be a pointer to the first `TodoItem`, or `NULL` if the todo list is empty. Let's add a local variable to `main()` to keep track of our todo list, and initialize it to `NULL`.
+Now our todo list can be stored as a pointer to the first `TodoItem`, or `NULL` if the todo list is empty. Let's add a variable to `main()` to keep track of our todo list, and initialize it to `NULL`.
 
 ~~~ 7. todo-list-head
 --- todo.c
@@ -197,13 +197,13 @@ We'll need to include a couple of headers to use `malloc()`, `strlen()`, and `st
 |typedef struct TodoItem {
 |  char* description;
 
-With that, adding items to the todo list should work! Unfortunately we can't see the todo list, so we can't see this in action just yet. We'll take care of that next.
+With that, adding items to the todo list should work! Unfortunately we can't see the todo list, so we can't see this in action just yet.
 
-Notice that we used `malloc()` without using `free()`. Technically, our program is leaking memory. If you have `valgrind`, you can run `valgrind ./todo` to see this. Later, after we've implemented the rest of the features, we'll add in all the proper `free()`s.
+Notice that we used `malloc()` without using `free()`. Technically, our program is leaking memory now. If you have `valgrind`, you can run `valgrind ./todo` to how much memory leaked. Later, after we've implemented the rest of the features for our todo app, we'll add in all the proper `free()`s.
 
 ## Printing the todo list
 
-The todo list should be printed after every command the user runs. It will show an id number beside each todo item, to make it easy to refer to todo items when using the delete command.
+The todo list should be printed after every command the user runs. It should show an id number beside each todo item, to make it easy to refer to todo items when using the delete command.
 
 Let's add a `todo_print()` function that traverses the linked list to print out the todo list.
 
@@ -231,6 +231,8 @@ Let's add a `todo_print()` function that traverses the linked list to print out 
 |  TodoItem* todo_item = (TodoItem*)malloc(sizeof(TodoItem));
 |  size_t len = strlen(description);
 
+Call it inside our main loop:
+
 ~~~ 12. call-todo-print
 --- todo.c
 +++ todo.c
@@ -243,6 +245,10 @@ Let's add a `todo_print()` function that traverses the linked list to print out 
 |    printf("todo> ");
 |    fflush(stdout);
 |
+
+Now you should see your todo items being added when you use the `+` command!
+
+They're being printed with extra newlines though. The newline from the input string is being saved onto the todo item description. Let's trim the newline out so that doesn't happen.
 
 ~~~ 13. trim-trailing-newline
 --- todo.c
@@ -260,6 +266,8 @@ Let's add a `todo_print()` function that traverses the linked list to print out 
 |        case '+':
 |          todo = todo_add(todo, &input[1]);
 
+Now that things are starting to come together, let's make the user experience a little better by detecting invalid commands and offering a little bit of help.
+
 ~~~ 14. better-cli
 --- todo.c
 +++ todo.c
@@ -276,6 +284,10 @@ Let's add a `todo_print()` function that traverses the linked list to print out 
 |    }
 |
 
+## Removing todos
+
+The command for removing a todo item will be `-`. The id of the todo you want to remove should come right after, e.g. `-3`.
+
 ~~~ 15. call-todo-remove
 --- todo.c
 +++ todo.c
@@ -289,6 +301,10 @@ Let's add a `todo_print()` function that traverses the linked list to print out 
 |        case 'q':
 |          quitting = 1;
 |          break;
+
+`atoi()` (ascii to int) parses the number in the input string into an int. This gets passed to `todo_remove()`, which should remove the todo item with that id from the todo list.
+
+Removing something from a linked list is hard. First we have to traverse the list until we get to the item we want to remove. Then we link the item that comes before it to the item that comes after it.
 
 ~~~ 16. remove-xs
 --- todo.c
@@ -318,6 +334,8 @@ Let's add a `todo_print()` function that traverses the linked list to print out 
 |  char input[1024];
 |  int quitting = 0;
 
+This doesn't work for removing the first item of the list. We have to handle that as a special case. All we have to do for this case is making the second item of the list the new head of the list.
+
 ~~~ 17. remove-x
 --- todo.c
 +++ todo.c
@@ -332,6 +350,10 @@ Let's add a `todo_print()` function that traverses the linked list to print out 
 |  int id = 1;
 |  TodoItem* cur = todo;
 |  while (cur) {
+
+## The snip command
+
+Let's add one more command: the snip command. This is similar to the remove command, but its symbol is `/` and it removes the given item and *all* of the items that come after it. This command is just a convenient way to create a bunch of garbage for the garbage collector to collect.
 
 ~~~ 18. add-snip-command
 --- todo.c
@@ -354,6 +376,8 @@ Let's add a `todo_print()` function that traverses the linked list to print out 
 |          break;
 |      }
 |    }
+
+`todo_snip()` will look similar to `todo_remove()`, except it will set the `->next` pointer to `NULL` to cut the list short at the specified id.
 
 ~~~ 19. snip-xs
 --- todo.c
@@ -381,6 +405,8 @@ Let's add a `todo_print()` function that traverses the linked list to print out 
 |  char input[1024];
 |  int quitting = 0;
 
+If we're snipping at the first item, that means we're removing all of the items in the todo list. So in this case, we'll return `NULL` as the new head of the list.
+
 ~~~ 20. snip-x
 --- todo.c
 +++ todo.c
@@ -395,6 +421,10 @@ Let's add a `todo_print()` function that traverses the linked list to print out 
 |  int id = 1;
 |  TodoItem* cur = todo;
 |  while (cur) {
+
+Note that because `atoi()` returns `0` for an empty string, you can just type `/` without a number to clear the whole todo list.
+
+## Plugging the memory leaks
 
 ~~~ 21. free-final-todo-list
 --- todo.c
