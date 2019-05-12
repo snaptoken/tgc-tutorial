@@ -1,6 +1,6 @@
 # Mark
 
-~~~ 70. add-mark
+~~~ 71. add-mark
 --- tgc.h
 +++ tgc.h
 @@ -7,6 +7,7 @@
@@ -12,7 +12,7 @@
 |
 |typedef struct {
 
-~~~ 71. set-mark
+~~~ 72. set-mark
 --- tgc.c
 +++ tgc.c
 @@ -7,6 +7,7 @@
@@ -24,7 +24,7 @@
 |  for (i = 0; i < gc->nslots; i++) {
 |    if (gc->items[i].ptr == NULL) {
 
-~~~ 72. debug-mark
+~~~ 73. debug-mark
 --- tgc.c
 +++ tgc.c
 @@ -114,6 +114,8 @@
@@ -37,7 +37,7 @@
 |
 |void tgc_debug(tgc_t *gc, void (*pretty_print)(tgc_ptr_t*)) {
 
-~~~ 73. tgc-mark-ptr
+~~~ 74. tgc-mark-ptr
 --- tgc.c
 +++ tgc.c
 @@ -47,6 +47,18 @@
@@ -60,7 +60,7 @@
 |  size_t i;
 |
 
-~~~ 74. add-bottom
+~~~ 75. add-bottom
 --- tgc.h
 +++ tgc.h
 @@ -11,6 +11,7 @@
@@ -72,7 +72,7 @@
 |  size_t nitems, nslots;
 |} tgc_t;
 
-~~~ 75. tgc-start-stk
+~~~ 76. tgc-start-stk
 --- tgc.h
 +++ tgc.h
 @@ -16,7 +16,7 @@
@@ -85,7 +85,7 @@
 |
 |void *tgc_alloc(tgc_t *gc, size_t size);
 
-~~~ 76. set-bottom
+~~~ 77. set-bottom
 --- tgc.c
 +++ tgc.c
 @@ -77,7 +77,8 @@
@@ -99,7 +99,7 @@
 |  gc->nslots = 0;
 |  gc->items = NULL;
 
-~~~ 77. pass-stack
+~~~ 78. pass-stack
 --- todo.c
 +++ todo.c
 @@ -88,12 +88,12 @@
@@ -118,7 +118,7 @@
 |  while (!quitting) {
 |    todo_print(todo);
 
-~~~ 78. debug-bottom
+~~~ 79. debug-bottom
 --- tgc.c
 +++ tgc.c
 @@ -132,6 +132,7 @@
@@ -130,7 +130,7 @@
 |  printf("nslots = %zu\n", gc->nslots);
 |  for (size_t i = 0; i < gc->nslots; i++) {
 
-~~~ 79. tgc-mark-stack
+~~~ 80. tgc-mark-stack
 --- tgc.c
 +++ tgc.c
 @@ -59,6 +59,15 @@
@@ -150,7 +150,7 @@
 |  size_t i;
 |
 
-~~~ 80. handle-both-stack-directions
+~~~ 81. handle-both-stack-directions
 --- tgc.c
 +++ tgc.c
 @@ -63,8 +63,16 @@
@@ -173,7 +173,7 @@
 |}
 |
 
-~~~ 81. tgc-mark
+~~~ 82. tgc-mark
 --- tgc.c
 +++ tgc.c
 @@ -76,6 +76,14 @@
@@ -192,7 +192,7 @@
 |  size_t i;
 |
 
-~~~ 82. test-tgc-mark
+~~~ 83. test-tgc-mark
 --- tgc.c
 +++ tgc.c
 @@ -157,6 +157,8 @@
@@ -212,7 +212,7 @@
 +  exit(1);
 |}
 
-~~~ 83. todo-cli
+~~~ 84. todo-cli
 --- todo.c
 +++ todo.c
 @@ -88,13 +88,11 @@
@@ -244,7 +244,7 @@
 |  tgc_stop(&gc);
 |
 
-~~~ 84. xxx-tgc-mark-return-early
+~~~ 85. xxx-tgc-mark-return-early
 --- tgc.c
 +++ tgc.c
 @@ -79,6 +79,8 @@
@@ -257,7 +257,7 @@
 |
 |  tgc_mark_stack(gc);
 
-~~~ 85. mark-stack-volatile
+~~~ 86. mark-stack-volatile
 --- tgc.c
 +++ tgc.c
 @@ -77,13 +77,15 @@
@@ -278,7 +278,7 @@
 |
 |static void tgc_sweep(tgc_t *gc) {
 
-~~~ 86. add-size
+~~~ 87. add-size
 --- tgc.h
 +++ tgc.h
 @@ -8,6 +8,7 @@
@@ -290,7 +290,7 @@
 |
 |typedef struct {
 
-~~~ 87. tgc-add-ptr-size
+~~~ 88. tgc-add-ptr-size
 --- tgc.c
 +++ tgc.c
 @@ -2,12 +2,13 @@
@@ -309,7 +309,7 @@
 |  for (i = 0; i < gc->nslots; i++) {
 |    if (gc->items[i].ptr == NULL) {
 
-~~~ 88. tgc-add-size
+~~~ 89. tgc-add-size
 --- tgc.c
 +++ tgc.c
 @@ -126,11 +126,11 @@
@@ -327,7 +327,7 @@
 |  } else {
 |    gc->nitems--;
 
-~~~ 89. tgc-alloc-pass-size
+~~~ 90. tgc-alloc-pass-size
 --- tgc.c
 +++ tgc.c
 @@ -143,7 +143,7 @@
@@ -340,7 +340,7 @@
 |  return ptr;
 |}
 
-~~~ 90. debug-size
+~~~ 91. debug-size
 --- tgc.c
 +++ tgc.c
 @@ -159,6 +159,7 @@
@@ -352,7 +352,7 @@
 |
 |void tgc_debug(tgc_t *gc, void (*pretty_print)(tgc_ptr_t*)) {
 
-~~~ 91. mark-heap
+~~~ 92. mark-heap
 --- tgc.c
 +++ tgc.c
 @@ -49,12 +49,15 @@
@@ -373,7 +373,7 @@
 |    }
 |  }
 
-~~~ 92. mark-heap-avoid-infinite-recursion
+~~~ 93. mark-heap-avoid-infinite-recursion
 --- tgc.c
 +++ tgc.c
 @@ -53,6 +53,7 @@
@@ -385,7 +385,7 @@
 |      printf("[DEBUG] marked %p\n", ptr);
 |      for (k = 0; k < gc->items[i].size/sizeof(void*); k++) {
 
-~~~ 93. mark-registers
+~~~ 94. mark-registers
 --- tgc.c
 +++ tgc.c
 @@ -82,6 +82,7 @@
@@ -406,7 +406,7 @@
 |}
 |
 
-~~~ 94. include-setjmp
+~~~ 95. include-setjmp
 --- tgc.h
 +++ tgc.h
 @@ -1,6 +1,7 @@
@@ -418,7 +418,7 @@
 |#include <stdlib.h>
 |#include <string.h>
 
-~~~ 95. add-minptr-maxptr
+~~~ 96. add-minptr-maxptr
 --- tgc.h
 +++ tgc.h
 @@ -3,6 +3,7 @@
@@ -438,7 +438,7 @@
 |  size_t nitems, nslots;
 |} tgc_t;
 
-~~~ 96. init-minptr-maxptr
+~~~ 97. init-minptr-maxptr
 --- tgc.c
 +++ tgc.c
 @@ -119,6 +119,8 @@
@@ -451,7 +451,7 @@
 |  printf("[DEBUG] tgc start\n");
 |}
 
-~~~ 97. debug-minptr-maxptr
+~~~ 98. debug-minptr-maxptr
 --- tgc.c
 +++ tgc.c
 @@ -175,6 +175,8 @@
@@ -464,7 +464,7 @@
 |  printf("nslots = %zu\n", gc->nslots);
 |  for (size_t i = 0; i < gc->nslots; i++) {
 
-~~~ 98. set-minptr-maxptr
+~~~ 99. set-minptr-maxptr
 --- tgc.c
 +++ tgc.c
 @@ -137,6 +137,10 @@
@@ -479,7 +479,7 @@
 |  if (tgc_resize(gc)) {
 |    tgc_add_ptr(gc, ptr, size);
 
-~~~ 99. use-minptr-maxptr
+~~~ 100. use-minptr-maxptr
 --- tgc.c
 +++ tgc.c
 @@ -51,6 +51,9 @@

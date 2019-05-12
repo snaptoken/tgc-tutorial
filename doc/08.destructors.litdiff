@@ -1,6 +1,6 @@
 # Destructors
 
-~~~ 202. add-dtor
+~~~ 203. add-dtor
 --- tgc.h
 +++ tgc.h
 @@ -17,6 +17,7 @@
@@ -12,7 +12,7 @@
 |
 |typedef struct {
 
-~~~ 203. dtor-opt-prototypes
+~~~ 204. dtor-opt-prototypes
 --- tgc.h
 +++ tgc.h
 @@ -40,8 +40,9 @@
@@ -28,7 +28,7 @@
 |int tgc_get_flags(tgc_t *gc, void *ptr);
 |void tgc_set_flags(tgc_t *gc, void *ptr, int flags);
 
-~~~ 204. opt-dtor
+~~~ 205. opt-dtor
 --- tgc.c
 +++ tgc.c
 @@ -340,27 +340,30 @@
@@ -69,7 +69,7 @@
 |  return ptr;
 |}
 
-~~~ 205. realloc-dtor
+~~~ 206. realloc-dtor
 --- tgc.c
 +++ tgc.c
 @@ -380,7 +380,7 @@
@@ -93,7 +93,7 @@
 |  }
 |
 
-~~~ 206. add-pass-dtor
+~~~ 207. add-pass-dtor
 --- tgc.c
 +++ tgc.c
 @@ -313,7 +313,10 @@
@@ -118,7 +118,7 @@
 |      tgc_run(gc);
 |    }
 
-~~~ 207. set-dtor
+~~~ 208. set-dtor
 --- tgc.c
 +++ tgc.c
 @@ -27,7 +27,10 @@
@@ -142,7 +142,7 @@
 |  while (1) {
 |    h = gc->items[i].hash;
 
-~~~ 208. rehash-dtor
+~~~ 209. rehash-dtor
 --- tgc.c
 +++ tgc.c
 @@ -136,7 +136,9 @@
@@ -157,7 +157,7 @@
 |  }
 |
 
-~~~ 209. debug-dtor
+~~~ 210. debug-dtor
 --- tgc.c
 +++ tgc.c
 @@ -456,6 +456,7 @@
@@ -169,7 +169,7 @@
 |
 |void tgc_debug(tgc_t *gc, void (*pretty_print)(tgc_ptr_t*)) {
 
-~~~ 210. pass-dtor-to-alloc-opt
+~~~ 211. pass-dtor-to-alloc-opt
 --- todo.c
 +++ todo.c
 @@ -32,7 +32,7 @@
@@ -191,7 +191,7 @@
 |
 |  while (!quitting) {
 
-~~~ 211. string-dtor
+~~~ 212. string-dtor
 --- todo.c
 +++ todo.c
 @@ -13,6 +13,10 @@
@@ -215,7 +215,7 @@
 |
 |  *todo = todo_item;
 
-~~~ 212. get-set-dtor-prototypes
+~~~ 213. get-set-dtor-prototypes
 --- tgc.h
 +++ tgc.h
 @@ -46,6 +46,8 @@
@@ -228,7 +228,7 @@
 |
 |void tgc_debug(tgc_t *gc, void (*pretty_print)(tgc_ptr_t*));
 
-~~~ 213. get-set-dtor
+~~~ 214. get-set-dtor
 --- tgc.c
 +++ tgc.c
 @@ -432,6 +432,17 @@
@@ -250,7 +250,7 @@
 |  tgc_ptr_t *p = tgc_get_ptr(gc, ptr);
 |  if (p) { return p->size; }
 
-~~~ 214. call-dtor
+~~~ 215. call-dtor
 --- tgc.c
 +++ tgc.c
 @@ -252,6 +252,7 @@
@@ -262,7 +262,7 @@
 |    memset(&gc->items[i], 0, sizeof(tgc_ptr_t));
 |
 
-~~~ 215. alloc-in-dtor
+~~~ 216. alloc-in-dtor
 --- todo.c
 +++ todo.c
 @@ -14,6 +14,7 @@
@@ -274,7 +274,7 @@
 |}
 |
 
-~~~ 216. revert-call-dtor
+~~~ 217. revert-call-dtor
 --- tgc.c
 +++ tgc.c
 @@ -252,7 +252,6 @@
@@ -286,7 +286,7 @@
 |    memset(&gc->items[i], 0, sizeof(tgc_ptr_t));
 |
 
-~~~ 217. add-frees
+~~~ 218. add-frees
 --- tgc.h
 +++ tgc.h
 @@ -24,9 +24,9 @@
@@ -302,7 +302,7 @@
 |
 |void tgc_start(tgc_t *gc, void *stk);
 
-~~~ 218. init-frees
+~~~ 219. init-frees
 --- tgc.c
 +++ tgc.c
 @@ -287,7 +287,9 @@
@@ -324,7 +324,7 @@
 |  printf("[DEBUG] tgc stop\n");
 |}
 
-~~~ 219. debug-frees
+~~~ 220. debug-frees
 --- tgc.c
 +++ tgc.c
 @@ -483,9 +483,15 @@
@@ -344,7 +344,7 @@
 +  }
 |}
 
-~~~ 220. sweep-count-frees
+~~~ 221. sweep-count-frees
 --- tgc.c
 +++ tgc.c
 @@ -246,6 +246,14 @@
@@ -363,7 +363,7 @@
 |  while (i < gc->nslots) {
 |    if (gc->items[i].hash ==        0) { i++; continue; }
 
-~~~ 221. sweep-alloc-frees
+~~~ 222. sweep-alloc-frees
 --- tgc.c
 +++ tgc.c
 @@ -254,6 +254,9 @@
@@ -377,7 +377,7 @@
 |  while (i < gc->nslots) {
 |    if (gc->items[i].hash ==        0) { i++; continue; }
 
-~~~ 222. sweep-add-to-frees
+~~~ 223. sweep-add-to-frees
 --- tgc.c
 +++ tgc.c
 @@ -240,7 +240,7 @@
@@ -408,7 +408,7 @@
 |
 |    j = i;
 
-~~~ 223. sweep-free-frees
+~~~ 224. sweep-free-frees
 --- tgc.c
 +++ tgc.c
 @@ -289,6 +289,12 @@
@@ -425,7 +425,7 @@
 |
 |/*** gc control ***/
 
-~~~ 224. sweep-cleanup-frees
+~~~ 225. sweep-cleanup-frees
 --- tgc.c
 +++ tgc.c
 @@ -295,6 +295,10 @@
@@ -440,7 +440,7 @@
 |
 |/*** gc control ***/
 
-~~~ 225. free-dtor
+~~~ 226. free-dtor
 --- tgc.c
 +++ tgc.c
 @@ -439,6 +439,9 @@
@@ -454,7 +454,7 @@
 |    tgc_rem(gc, ptr);
 |  }
 
-~~~ 226. rem-ptr-frees-null
+~~~ 227. rem-ptr-frees-null
 --- tgc.c
 +++ tgc.c
 @@ -64,6 +64,10 @@
@@ -469,7 +469,7 @@
 |  j = 0;
 |
 
-~~~ 227. sweep-check-frees-for-null
+~~~ 228. sweep-check-frees-for-null
 --- tgc.c
 +++ tgc.c
 @@ -295,9 +295,11 @@
@@ -488,7 +488,7 @@
 |
 |  free(gc->frees);
 
-~~~ 228. dont-alloc-in-dtor
+~~~ 229. dont-alloc-in-dtor
 --- todo.c
 +++ todo.c
 @@ -14,7 +14,6 @@

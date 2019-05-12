@@ -1,6 +1,6 @@
 # One fell sweep
 
-~~~ 25. revert free
+~~~ 26. revert free
 --- todo.c
 +++ todo.c
 @@ -33,10 +33,7 @@
@@ -70,7 +70,7 @@
 |  return 0;
 |}
 
-~~~ 26. call-tgc-alloc
+~~~ 27. call-tgc-alloc
 --- todo.c
 +++ todo.c
 @@ -21,11 +21,11 @@
@@ -88,7 +88,7 @@
 |
 |  return todo_item;
 
-~~~ 27. include-tgc-h
+~~~ 28. include-tgc-h
 --- todo.c
 +++ todo.c
 @@ -1,6 +1,7 @@
@@ -100,13 +100,13 @@
 |typedef struct TodoItem {
 |  char* description;
 
-~~~ 28. declare-tgc-alloc
+~~~ 29. declare-tgc-alloc
 --- /dev/null
 +++ tgc.h
 @@ -0,0 +1,1 @@
 +void *tgc_alloc(size_t size);
 
-~~~ 29. include-stdlib
+~~~ 30. include-stdlib
 --- tgc.h
 +++ tgc.h
 @@ -1,1 +1,3 @@
@@ -114,7 +114,7 @@
 +
 |void *tgc_alloc(size_t size);
 
-~~~ 30. include-guard
+~~~ 31. include-guard
 --- tgc.h
 +++ tgc.h
 @@ -1,3 +1,8 @@
@@ -127,7 +127,7 @@
 +
 +#endif
 
-~~~ 31. define-tgc-alloc
+~~~ 32. define-tgc-alloc
 --- /dev/null
 +++ tgc.c
 @@ -0,0 +1,4 @@
@@ -136,7 +136,7 @@
 +  return ptr;
 +}
 
-~~~ 32. include-tgc-h
+~~~ 33. include-tgc-h
 --- tgc.c
 +++ tgc.c
 @@ -1,3 +1,5 @@
@@ -146,7 +146,7 @@
 |  void *ptr = malloc(size);
 |  return ptr;
 
-~~~ 33. section-allocator-functions
+~~~ 34. section-allocator-functions
 --- tgc.c
 +++ tgc.c
 @@ -1,5 +1,7 @@
@@ -158,7 +158,7 @@
 |  void *ptr = malloc(size);
 |  return ptr;
 
-~~~ 34. struct-tgc-ptr-t
+~~~ 35. struct-tgc-ptr-t
 --- tgc.h
 +++ tgc.h
 @@ -3,6 +3,10 @@
@@ -173,7 +173,7 @@
 |
 |#endif
 
-~~~ 35. struct-tgc-t
+~~~ 36. struct-tgc-t
 --- tgc.h
 +++ tgc.h
 @@ -7,6 +7,11 @@
@@ -189,7 +189,7 @@
 |
 |#endif
 
-~~~ 36. static-gc
+~~~ 37. static-gc
 --- todo.c
 +++ todo.c
 @@ -3,6 +3,8 @@
@@ -202,7 +202,7 @@
 |  char* description;
 |  struct TodoItem* next;
 
-~~~ 37. call-tgc-start
+~~~ 38. call-tgc-start
 --- todo.c
 +++ todo.c
 @@ -79,6 +79,8 @@
@@ -215,7 +215,7 @@
 |    todo_print(todo);
 |
 
-~~~ 38. define-tgc-start
+~~~ 39. define-tgc-start
 --- tgc.h
 +++ tgc.h
 @@ -12,6 +12,8 @@
@@ -228,7 +228,7 @@
 |
 |#endif
 
-~~~ 39. really-define-tgc-start
+~~~ 40. really-define-tgc-start
 --- tgc.c
 +++ tgc.c
 @@ -1,5 +1,13 @@
@@ -246,7 +246,7 @@
 |
 |void *tgc_alloc(size_t size) {
 
-~~~ 40. tgc-alloc-takes-global-state-h
+~~~ 41. tgc-alloc-takes-global-state-h
 --- tgc.h
 +++ tgc.h
 @@ -14,6 +14,6 @@
@@ -258,7 +258,7 @@
 |
 |#endif
 
-~~~ 41. tgc-alloc-takes-global-state
+~~~ 42. tgc-alloc-takes-global-state
 --- tgc.c
 +++ tgc.c
 @@ -10,7 +10,7 @@
@@ -271,7 +271,7 @@
 |  return ptr;
 |}
 
-~~~ 42. call-tgc-add
+~~~ 43. call-tgc-add
 --- tgc.c
 +++ tgc.c
 @@ -12,5 +12,6 @@
@@ -282,7 +282,7 @@
 |  return ptr;
 |}
 
-~~~ 43. define-tgc-add
+~~~ 44. define-tgc-add
 --- tgc.c
 +++ tgc.c
 @@ -10,6 +10,12 @@
@@ -299,7 +299,7 @@
 |  void *ptr = malloc(size);
 |  tgc_add(gc, ptr);
 
-~~~ 44. define-tgc-resize
+~~~ 45. define-tgc-resize
 --- tgc.c
 +++ tgc.c
 @@ -1,5 +1,14 @@
@@ -318,7 +318,7 @@
 |
 |void tgc_start(tgc_t *gc) {
 
-~~~ 45. memcpy-pointer-table
+~~~ 46. memcpy-pointer-table
 --- tgc.c
 +++ tgc.c
 @@ -3,10 +3,15 @@
@@ -338,7 +338,7 @@
 |
 |/*** gc control ***/
 
-~~~ 46. include-string-h
+~~~ 47. include-string-h
 --- tgc.h
 +++ tgc.h
 @@ -2,6 +2,7 @@
@@ -350,7 +350,7 @@
 |typedef struct {
 |  void *ptr;
 
-~~~ 47. free-old-pointer-table
+~~~ 48. free-old-pointer-table
 --- tgc.c
 +++ tgc.c
 @@ -12,6 +12,8 @@
@@ -363,7 +363,7 @@
 |
 |/*** gc control ***/
 
-~~~ 48. define-tgc-add-ptr
+~~~ 49. define-tgc-add-ptr
 --- tgc.c
 +++ tgc.c
 @@ -1,5 +1,21 @@
@@ -389,7 +389,7 @@
 |
 |static void tgc_resize(tgc_t *gc) {
 
-~~~ 49. xxx-prevent-readding-a-pointer
+~~~ 50. xxx-prevent-readding-a-pointer
 --- tgc.c
 +++ tgc.c
 @@ -13,6 +13,7 @@
@@ -401,7 +401,7 @@
 |}
 |
 
-~~~ 50. pass-gc-to-tgc-alloc
+~~~ 51. pass-gc-to-tgc-alloc
 --- todo.c
 +++ todo.c
 @@ -24,11 +24,11 @@
@@ -419,7 +419,7 @@
 |
 |  return todo_item;
 
-~~~ 51. call-tgc-debug
+~~~ 52. call-tgc-debug
 --- todo.c
 +++ todo.c
 @@ -103,6 +103,9 @@
@@ -433,7 +433,7 @@
 |          quitting = 1;
 |          break;
 
-~~~ 52. declare-tgc-debug
+~~~ 53. declare-tgc-debug
 --- tgc.h
 +++ tgc.h
 @@ -17,4 +17,6 @@
@@ -444,7 +444,7 @@
 +
 |#endif
 
-~~~ 53. define-tgc-debug
+~~~ 54. define-tgc-debug
 --- tgc.c
 +++ tgc.c
 @@ -54,3 +54,19 @@
@@ -468,7 +468,7 @@
 +  }
 +}
 
-~~~ 54. include-stdio-h
+~~~ 55. include-stdio-h
 --- tgc.h
 +++ tgc.h
 @@ -1,6 +1,7 @@
@@ -480,7 +480,7 @@
 |#include <string.h>
 |
 
-~~~ 55. log-tgc-alloc
+~~~ 56. log-tgc-alloc
 --- tgc.c
 +++ tgc.c
 @@ -51,6 +51,7 @@
@@ -492,7 +492,7 @@
 |  return ptr;
 |}
 
-~~~ 56. log-tgc-resize
+~~~ 57. log-tgc-resize
 --- tgc.c
 +++ tgc.c
 @@ -31,6 +31,9 @@
@@ -506,7 +506,7 @@
 |
 |/*** gc control ***/
 
-~~~ 57. call-pretty-print
+~~~ 58. call-pretty-print
 --- tgc.c
 +++ tgc.c
 @@ -61,16 +61,21 @@
@@ -536,7 +536,7 @@
 |  }
 |}
 
-~~~ 58. tgc-h-pretty-print
+~~~ 59. tgc-h-pretty-print
 --- tgc.h
 +++ tgc.h
 @@ -18,6 +18,6 @@
@@ -548,7 +548,7 @@
 |
 |#endif
 
-~~~ 59. define-pretty-print
+~~~ 60. define-pretty-print
 --- todo.c
 +++ todo.c
 @@ -1,3 +1,4 @@
@@ -586,7 +586,7 @@
 |        case 'q':
 |          quitting = 1;
 
-~~~ 60. log-tgc-start
+~~~ 61. log-tgc-start
 --- tgc.c
 +++ tgc.c
 @@ -42,6 +42,8 @@
@@ -599,7 +599,7 @@
 |
 |/*** allocator functions ***/
 
-~~~ 61. handle-malloc-error
+~~~ 62. handle-malloc-error
 --- tgc.c
 +++ tgc.c
 @@ -56,8 +56,10 @@
@@ -616,7 +616,7 @@
 |}
 |
 
-~~~ 62. handle-calloc-error
+~~~ 63. handle-calloc-error
 --- tgc.c
 +++ tgc.c
 @@ -19,21 +19,29 @@
@@ -652,7 +652,7 @@
 |
 |/*** gc control ***/
 
-~~~ 63. handle-tgc-resize-error
+~~~ 64. handle-tgc-resize-error
 --- tgc.c
 +++ tgc.c
 @@ -56,10 +56,17 @@
@@ -677,7 +677,7 @@
 |
 |void *tgc_alloc(tgc_t *gc, size_t size) {
 
-~~~ 64. handle-tgc-add-error
+~~~ 65. handle-tgc-add-error
 --- tgc.c
 +++ tgc.c
 @@ -73,7 +73,7 @@
@@ -690,7 +690,7 @@
 |  return ptr;
 |}
 
-~~~ 65. call-tgc-stop
+~~~ 66. call-tgc-stop
 --- todo.c
 +++ todo.c
 @@ -137,5 +137,7 @@
@@ -702,7 +702,7 @@
 |  return 0;
 |}
 
-~~~ 66. declare-tgc-stop
+~~~ 67. declare-tgc-stop
 --- tgc.h
 +++ tgc.h
 @@ -15,6 +15,7 @@
@@ -714,7 +714,7 @@
 |void *tgc_alloc(tgc_t *gc, size_t size);
 |
 
-~~~ 67. define-tgc-stop
+~~~ 68. define-tgc-stop
 --- tgc.c
 +++ tgc.c
 @@ -54,6 +54,14 @@
@@ -733,7 +733,7 @@
 |
 |static void *tgc_add(tgc_t *gc, void *ptr) {
 
-~~~ 68. tgc-sweep
+~~~ 69. tgc-sweep
 --- tgc.c
 +++ tgc.c
 @@ -44,6 +44,22 @@
@@ -760,7 +760,7 @@
 |
 |void tgc_start(tgc_t *gc) {
 
-~~~ 69. xxx-return-early-if-nothing-to-sweep
+~~~ 70. xxx-return-early-if-nothing-to-sweep
 --- tgc.c
 +++ tgc.c
 @@ -51,6 +51,8 @@

@@ -1,6 +1,6 @@
 # Roots and leaves
 
-~~~ 156. change-mark-to-flags
+~~~ 157. change-mark-to-flags
 --- tgc.h
 +++ tgc.h
 @@ -7,9 +7,13 @@
@@ -19,7 +19,7 @@
 |} tgc_ptr_t;
 |
 
-~~~ 157. add-ptr-flags
+~~~ 158. add-ptr-flags
 --- tgc.c
 +++ tgc.c
 @@ -12,7 +12,7 @@
@@ -41,7 +41,7 @@
 |  item.hash = i+1;
 |
 
-~~~ 158. rehash-flags
+~~~ 159. rehash-flags
 --- tgc.c
 +++ tgc.c
 @@ -84,7 +84,7 @@
@@ -54,7 +54,7 @@
 |  }
 |
 
-~~~ 159. add-flags
+~~~ 160. add-flags
 --- tgc.c
 +++ tgc.c
 @@ -247,7 +247,7 @@
@@ -76,7 +76,7 @@
 |      tgc_run(gc);
 |    }
 
-~~~ 160. zero-flags
+~~~ 161. zero-flags
 --- tgc.c
 +++ tgc.c
 @@ -271,7 +271,7 @@
@@ -89,7 +89,7 @@
 |  return ptr;
 |}
 
-~~~ 161. mark-ptr-flags
+~~~ 162. mark-ptr-flags
 --- tgc.c
 +++ tgc.c
 @@ -123,8 +123,8 @@
@@ -104,7 +104,7 @@
 |      for (k = 0; k < gc->items[i].size/sizeof(void*); k++) {
 |        tgc_mark_ptr(gc, ((void**)gc->items[i].ptr)[k]);
 
-~~~ 162. sweep-flags
+~~~ 163. sweep-flags
 --- tgc.c
 +++ tgc.c
 @@ -177,8 +177,8 @@
@@ -119,7 +119,7 @@
 |    free(gc->items[i].ptr);
 |    memset(&gc->items[i], 0, sizeof(tgc_ptr_t));
 
-~~~ 163. sweep-reset-mark-flag
+~~~ 164. sweep-reset-mark-flag
 --- tgc.c
 +++ tgc.c
 @@ -199,7 +199,7 @@
@@ -132,7 +132,7 @@
 |
 |  tgc_resize_less(gc);
 
-~~~ 164. debug-flags
+~~~ 165. debug-flags
 --- tgc.c
 +++ tgc.c
 @@ -286,7 +286,10 @@
@@ -148,7 +148,7 @@
 |  printf("  hash = %zu\n", ptr->hash);
 |}
 
-~~~ 165. static-todo
+~~~ 166. static-todo
 --- todo.c
 +++ todo.c
 @@ -11,20 +11,23 @@
@@ -264,7 +264,7 @@
 |        case 'p':
 |          tgc_debug(&gc, pretty_print);
 
-~~~ 166. more-indirection
+~~~ 167. more-indirection
 --- todo.c
 +++ todo.c
 @@ -11,15 +11,15 @@
@@ -339,7 +339,7 @@
 |    todo_print();
 |
 
-~~~ 167. add-root-flag
+~~~ 168. add-root-flag
 --- tgc.h
 +++ tgc.h
 @@ -8,7 +8,8 @@
@@ -353,7 +353,7 @@
 |
 |typedef struct {
 
-~~~ 168. mark-roots
+~~~ 169. mark-roots
 --- tgc.c
 +++ tgc.c
 @@ -154,6 +154,7 @@
@@ -386,7 +386,7 @@
 |
 |  memset(&env, 0, sizeof(jmp_buf));
 
-~~~ 169. sweep-skip-roots
+~~~ 170. sweep-skip-roots
 --- tgc.c
 +++ tgc.c
 @@ -194,6 +194,7 @@
@@ -398,7 +398,7 @@
 |    free(gc->items[i].ptr);
 |    memset(&gc->items[i], 0, sizeof(tgc_ptr_t));
 
-~~~ 170. alloc-opt-prototype
+~~~ 171. alloc-opt-prototype
 --- tgc.h
 +++ tgc.h
 @@ -35,6 +35,8 @@
@@ -411,7 +411,7 @@
 |
 |#endif
 
-~~~ 171. alloc-opt
+~~~ 172. alloc-opt
 --- tgc.c
 +++ tgc.c
 @@ -283,11 +283,11 @@
@@ -429,7 +429,7 @@
 |  return ptr;
 |}
 
-~~~ 172. alloc-delegates
+~~~ 173. alloc-delegates
 --- tgc.c
 +++ tgc.c
 @@ -283,6 +283,10 @@
@@ -444,7 +444,7 @@
 |  void *ptr = malloc(size);
 |  if (ptr != NULL) {
 
-~~~ 173. use-alloc-opt
+~~~ 174. use-alloc-opt
 --- todo.c
 +++ todo.c
 @@ -93,7 +93,7 @@
@@ -457,7 +457,7 @@
 |
 |  while (!quitting) {
 
-~~~ 174. debug-root-flag
+~~~ 175. debug-root-flag
 --- tgc.c
 +++ tgc.c
 @@ -308,6 +308,7 @@
@@ -469,7 +469,7 @@
 |
 |  printf("  size = %zu\n", ptr->size);
 
-~~~ 175. pretty-print-pointer
+~~~ 176. pretty-print-pointer
 --- todo.c
 +++ todo.c
 @@ -80,7 +80,9 @@
@@ -484,7 +484,7 @@
 |  } else {
 |    TodoItem* todo_item = (TodoItem*)ptr->ptr;
 
-~~~ 176. add-leaf-flag
+~~~ 177. add-leaf-flag
 --- tgc.h
 +++ tgc.h
 @@ -9,7 +9,8 @@
@@ -498,7 +498,7 @@
 |
 |typedef struct {
 
-~~~ 177. mark-ptr-leaf
+~~~ 178. mark-ptr-leaf
 --- tgc.c
 +++ tgc.c
 @@ -126,6 +126,7 @@
@@ -510,7 +510,7 @@
 |        tgc_mark_ptr(gc, ((void**)gc->items[i].ptr)[k]);
 |      }
 
-~~~ 178. mark-leaf
+~~~ 179. mark-leaf
 --- tgc.c
 +++ tgc.c
 @@ -171,6 +171,7 @@
@@ -522,7 +522,7 @@
 |        tgc_mark_ptr(gc, ((void**)gc->items[i].ptr)[k]);
 |      }
 
-~~~ 179. debug-leaf-flag
+~~~ 180. debug-leaf-flag
 --- tgc.c
 +++ tgc.c
 @@ -311,6 +311,7 @@
@@ -534,7 +534,7 @@
 |
 |  printf("  size = %zu\n", ptr->size);
 
-~~~ 180. make-strings-leafs
+~~~ 181. make-strings-leafs
 --- todo.c
 +++ todo.c
 @@ -32,7 +32,7 @@
@@ -547,7 +547,7 @@
 |
 |  *todo = todo_item;
 
-~~~ 181. improve-pretty-print
+~~~ 182. improve-pretty-print
 --- todo.c
 +++ todo.c
 @@ -77,12 +77,9 @@
@@ -565,7 +565,7 @@
 |  } else {
 |    TodoItem* todo_item = (TodoItem*)ptr->ptr;
 
-~~~ 182. leaf-stress-test
+~~~ 183. leaf-stress-test
 --- stress_test.c
 +++ stress_test.c
 @@ -1,7 +1,7 @@

@@ -8,16 +8,16 @@
       <% diff = Leg::DiffTransformers::SyntaxHighlight.new.transform(diff) %>
       <div class="diff">
         <div class="diff-header">
+          <div class="diff-filename">
+            <a href="https://github.com/snaptoken/<%= name %>-src/blob/step-<%= number %>/<%= diff.filename %>">
+              <%= diff.filename %>
+            </a>
+          </div>
           <div class="diff-summary">
             <span class="diff-step-number">
               <%= number %>.
             </span>
             <%= markdown(summary) %>
-          </div>
-          <div class="diff-filename">
-            <a href="https://github.com/snaptoken/<%= name %>-src/blob/step-<%= number %>/<%= diff.filename %>">
-              <%= diff.filename %>
-            </a>
           </div>
         </div>
         <div class="diff-code">

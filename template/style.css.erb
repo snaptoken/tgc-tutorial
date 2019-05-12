@@ -247,8 +247,8 @@ h1 kbd, h2 kbd, h3 kbd, h4 kbd, h5 kbd, h6 kbd {
 .diff .diff-header {
   display: flex;
   justify-content: space-between;
-  align-items: baseline;
-  padding: 6px 10px;
+  align-items: center;
+  padding: 4px 10px;
   background-color: #fafbfc;
   border-bottom: 1px solid #ede7e3;
   font-size: 18px;
@@ -263,12 +263,13 @@ h1 kbd, h2 kbd, h3 kbd, h4 kbd, h5 kbd, h6 kbd {
 }
 
 .diff .diff-summary p {
-  display: inline;
-  margin-top: 0;
+  font-family: 'Fira Mono', monospace;
+  font-size: 12px;
 }
 
-.diff .diff-filename {
-  margin-left: 10px;
+.diff .diff-summary p {
+  display: inline;
+  margin-top: 0;
 }
 
 .diff .diff-filename a {

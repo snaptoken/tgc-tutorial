@@ -16,7 +16,9 @@ So, in this chapter we'll start by building the todo app, *without* any garbage 
 
 ## An interactive command line app
 
-Create a file named `todo.c` and start with a `main()` function:
+Our todo app will be very minimalist. It'll give the user an interactive prompt, which they can type commands into to add and remove todos. Adding todos will cause memory to be allocated, and removing todos will cause memory to become unused. This will provide a nice interactive way of testing our garbage collector.
+
+Time to start typing! Create a file named `todo.c` and give it a `main()` function.
 
 ~~~ 1. main
 --- /dev/null
@@ -26,9 +28,25 @@ Create a file named `todo.c` and start with a `main()` function:
 +  return 0;
 +}
 
-This blank slate of a program will become our todo list app. Let's make a simple `Makefile` to compile it.
+This blank slate of a program will become our todo list app.
 
-~~~ 2. q to quit
+Let's add a `Makefile` to compile this program.
+
+~~~ 2. makefile
+--- /dev/null
++++ Makefile
+@@ -0,0 +1,5 @@
++todo: todo.c
++	$(CC) todo.c -o todo
++
++clean:
++	rm -f todo
+
+Now we can run `make todo` (or just `make`) to compile the todo app, and `make clean` to remove the compiled executable.
+
+Next, we'll start reading input from the user in a loop. The first command we'll implement will be `q`, which will quit the program.
+
+~~~ 3. q to quit
 --- todo.c
 +++ todo.c
 @@ -1,3 +1,18 @@
@@ -51,7 +69,11 @@ This blank slate of a program will become our todo list app. Let's make a simple
 |  return 0;
 |}
 
-~~~ 3. prompt
+We're using `fgets()` to read a line from the standard input, into our `input` buffer. The first character of the user's input tells us which command they want to run. If it's `q`, the loop ends and we quit.
+
+Let's print a `todo> ` prompt to make it clear that we're expecting them to type a command.
+
+~~~ 4. prompt
 --- todo.c
 +++ todo.c
 @@ -5,6 +5,9 @@
@@ -65,7 +87,11 @@ This blank slate of a program will become our todo list app. Let's make a simple
 |      switch (input[0]) {
 |        case 'q':
 
-~~~ 4. handle eof
+Terminals usually do line-buffered output, meaning they won't actually print anything to the screen until a newline is printed. Our prompt doesn't end in a newline, so we need to flush the standard output to make sure it actually shows up on the screen.
+
+We should also handle end-of-file, as an alternative way of quitting. Users often expect to be able to press <kbd>Ctrl-D</kbd> to quit interactive prompts. It also allows you to use a file as input to the todo app, which could be useful for testing later.
+
+~~~ 5. handle eof
 --- todo.c
 +++ todo.c
 @@ -15,6 +15,11 @@
@@ -81,7 +107,13 @@ This blank slate of a program will become our todo list app. Let's make a simple
 |
 |  return 0;
 
-~~~ 5. todo struct
+## Adding todos
+
+The `+` command will add an item to the todo list. Anything coming after the `+` will be the **description** of the todo item. So a full command might look like `+Take the lettuce out of the drier`.
+
+As I mentioned earlier, we're going to use a linked list data structure to store the todo list. Each todo item will contain the todo description (a string), and a pointer to the next todo item in the list. Let's make a `TodoItem` struct for this.
+
+~~~ 6. todo struct
 --- todo.c
 +++ todo.c
 @@ -1,5 +1,10 @@
@@ -96,7 +128,9 @@ This blank slate of a program will become our todo list app. Let's make a simple
 |  char input[1024];
 |  int quitting = 0;
 
-~~~ 6. todo list head
+Our todo list will then be a pointer to the first `TodoItem`, or `NULL` if the todo list is empty. Let's add a local variable to `main()` to keep track of our todo list, and initialize it to `NULL`.
+
+~~~ 7. todo list head
 --- todo.c
 +++ todo.c
 @@ -8,6 +8,7 @@
@@ -108,7 +142,9 @@ This blank slate of a program will become our todo list app. Let's make a simple
 |  while (!quitting) {
 |    printf("todo> ");
 
-~~~ 7. call todo_add
+Next we'll handle the `+` command.
+
+~~~ 8. call todo_add
 --- todo.c
 +++ todo.c
 @@ -16,6 +16,9 @@
@@ -122,7 +158,11 @@ This blank slate of a program will become our todo list app. Let's make a simple
 |          quitting = 1;
 |          break;
 
-~~~ 8. implement todo_add
+`todo_add()` will take the existing todo list, add a `TodoItem` to the front of it, and return that todo item as the new head of the list. That's why we both pass `todo` as an argument and then overwrite `todo` with the result.
+
+So, let's implement `todo_add()`. It will have to allocate memory for the `TodoItem` struct, as well as the description string.
+
+~~~ 9. implement todo_add
 --- todo.c
 +++ todo.c
 @@ -5,6 +5,17 @@
@@ -144,7 +184,9 @@ This blank slate of a program will become our todo list app. Let's make a simple
 |  char input[1024];
 |  int quitting = 0;
 
-~~~ 9. todo includes
+We'll need to include a couple of headers to use `malloc()`, `strlen()`, and `strcpy()`.
+
+~~~ 10. todo includes
 --- todo.c
 +++ todo.c
 @@ -1,4 +1,6 @@
@@ -155,7 +197,17 @@ This blank slate of a program will become our todo list app. Let's make a simple
 |typedef struct TodoItem {
 |  char* description;
 
-~~~ 10. todo_print
+With that, adding items to the todo list should work! Unfortunately we can't see the todo list, so we can't see this in action just yet. We'll take care of that next.
+
+Notice that we used `malloc()` without using `free()`. Technically, our program is leaking memory. If you have `valgrind`, you can run `valgrind ./todo` to see this. Later, after we've implemented the rest of the features, we'll add in all the proper `free()`s.
+
+## Printing the todo list
+
+The todo list should be printed after every command the user runs. It will show an id number beside each todo item, to make it easy to refer to todo items when using the delete command.
+
+Let's add a `todo_print()` function that traverses the linked list to print out the todo list.
+
+~~~ 11. todo_print
 --- todo.c
 +++ todo.c
 @@ -7,6 +7,19 @@
@@ -179,7 +231,7 @@ This blank slate of a program will become our todo list app. Let's make a simple
 |  TodoItem* todo_item = (TodoItem*)malloc(sizeof(TodoItem));
 |  size_t len = strlen(description);
 
-~~~ 11. call todo_print
+~~~ 12. call todo_print
 --- todo.c
 +++ todo.c
 @@ -37,6 +37,8 @@
@@ -192,7 +244,7 @@ This blank slate of a program will become our todo list app. Let's make a simple
 |    fflush(stdout);
 |
 
-~~~ 12. trim trailing newline
+~~~ 13. trim trailing newline
 --- todo.c
 +++ todo.c
 @@ -43,6 +43,11 @@
@@ -208,7 +260,7 @@ This blank slate of a program will become our todo list app. Let's make a simple
 |        case '+':
 |          todo = todo_add(todo, &input[1]);
 
-~~~ 13. better cli
+~~~ 14. better cli
 --- todo.c
 +++ todo.c
 @@ -55,6 +55,11 @@
@@ -224,7 +276,7 @@ This blank slate of a program will become our todo list app. Let's make a simple
 |    }
 |
 
-~~~ 14. call todo_remove
+~~~ 15. call todo_remove
 --- todo.c
 +++ todo.c
 @@ -52,6 +52,9 @@
@@ -238,7 +290,7 @@ This blank slate of a program will become our todo list app. Let's make a simple
 |          quitting = 1;
 |          break;
 
-~~~ 15. remove xs
+~~~ 16. remove xs
 --- todo.c
 +++ todo.c
 @@ -31,6 +31,23 @@
@@ -266,7 +318,7 @@ This blank slate of a program will become our todo list app. Let's make a simple
 |  char input[1024];
 |  int quitting = 0;
 
-~~~ 16. remove x
+~~~ 17. remove x
 --- todo.c
 +++ todo.c
 @@ -32,6 +32,10 @@
@@ -281,7 +333,7 @@ This blank slate of a program will become our todo list app. Let's make a simple
 |  TodoItem* cur = todo;
 |  while (cur) {
 
-~~~ 17. add snip command
+~~~ 18. add snip command
 --- todo.c
 +++ todo.c
 @@ -76,13 +76,16 @@
@@ -303,7 +355,7 @@ This blank slate of a program will become our todo list app. Let's make a simple
 |      }
 |    }
 
-~~~ 18. snip xs
+~~~ 19. snip xs
 --- todo.c
 +++ todo.c
 @@ -52,6 +52,21 @@
@@ -329,7 +381,7 @@ This blank slate of a program will become our todo list app. Let's make a simple
 |  char input[1024];
 |  int quitting = 0;
 
-~~~ 19. snip x
+~~~ 20. snip x
 --- todo.c
 +++ todo.c
 @@ -53,6 +53,10 @@
@@ -344,7 +396,7 @@ This blank slate of a program will become our todo list app. Let's make a simple
 |  TodoItem* cur = todo;
 |  while (cur) {
 
-~~~ 20. free final todo list
+~~~ 21. free final todo list
 --- todo.c
 +++ todo.c
 @@ -115,5 +115,14 @@
@@ -363,7 +415,7 @@ This blank slate of a program will become our todo list app. Let's make a simple
 |  return 0;
 |}
 
-~~~ 21. free remove x
+~~~ 22. free remove x
 --- todo.c
 +++ todo.c
 @@ -33,7 +33,10 @@
@@ -379,7 +431,7 @@ This blank slate of a program will become our todo list app. Let's make a simple
 |
 |  int id = 1;
 
-~~~ 22. free remove xs
+~~~ 23. free remove xs
 --- todo.c
 +++ todo.c
 @@ -44,7 +44,10 @@
@@ -394,7 +446,7 @@ This blank slate of a program will become our todo list app. Let's make a simple
 |      break;
 |    }
 
-~~~ 23. free snip x
+~~~ 24. free snip x
 --- todo.c
 +++ todo.c
 @@ -60,6 +60,12 @@
@@ -411,7 +463,7 @@ This blank slate of a program will become our todo list app. Let's make a simple
 |  }
 |
 
-~~~ 24. free snip xs
+~~~ 25. free snip xs
 --- todo.c
 +++ todo.c
 @@ -73,7 +73,14 @@
