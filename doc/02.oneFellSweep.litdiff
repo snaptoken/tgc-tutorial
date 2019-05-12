@@ -1,6 +1,6 @@
 # One fell sweep
 
-~~~ 26. revert free
+~~~ 26. revert-free
 --- todo.c
 +++ todo.c
 @@ -33,10 +33,7 @@

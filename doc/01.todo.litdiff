@@ -46,7 +46,7 @@ Now we can run `make todo` (or just `make`) to compile the todo app, and `make c
 
 Next, we'll start reading input from the user in a loop. The first command we'll implement will be `q`, which will quit the program.
 
-~~~ 3. q to quit
+~~~ 3. q-to-quit
 --- todo.c
 +++ todo.c
 @@ -1,3 +1,18 @@
@@ -91,7 +91,7 @@ Terminals usually do line-buffered output, meaning they won't actually print any
 
 We should also handle end-of-file, as an alternative way of quitting. Users often expect to be able to press <kbd>Ctrl-D</kbd> to quit interactive prompts. It also allows you to use a file as input to the todo app, which could be useful for testing later.
 
-~~~ 5. handle eof
+~~~ 5. handle-eof
 --- todo.c
 +++ todo.c
 @@ -15,6 +15,11 @@
@@ -113,7 +113,7 @@ The `+` command will add an item to the todo list. Anything coming after the `+`
 
 As I mentioned earlier, we're going to use a linked list data structure to store the todo list. Each todo item will contain the todo description (a string), and a pointer to the next todo item in the list. Let's make a `TodoItem` struct for this.
 
-~~~ 6. todo struct
+~~~ 6. todo-struct
 --- todo.c
 +++ todo.c
 @@ -1,5 +1,10 @@
@@ -130,7 +130,7 @@ As I mentioned earlier, we're going to use a linked list data structure to store
 
 Our todo list will then be a pointer to the first `TodoItem`, or `NULL` if the todo list is empty. Let's add a local variable to `main()` to keep track of our todo list, and initialize it to `NULL`.
 
-~~~ 7. todo list head
+~~~ 7. todo-list-head
 --- todo.c
 +++ todo.c
 @@ -8,6 +8,7 @@
@@ -144,7 +144,7 @@ Our todo list will then be a pointer to the first `TodoItem`, or `NULL` if the t
 
 Next we'll handle the `+` command.
 
-~~~ 8. call todo_add
+~~~ 8. call-todo-add
 --- todo.c
 +++ todo.c
 @@ -16,6 +16,9 @@
@@ -162,7 +162,7 @@ Next we'll handle the `+` command.
 
 So, let's implement `todo_add()`. It will have to allocate memory for the `TodoItem` struct, as well as the description string.
 
-~~~ 9. implement todo_add
+~~~ 9. todo-add
 --- todo.c
 +++ todo.c
 @@ -5,6 +5,17 @@
@@ -186,7 +186,7 @@ So, let's implement `todo_add()`. It will have to allocate memory for the `TodoI
 
 We'll need to include a couple of headers to use `malloc()`, `strlen()`, and `strcpy()`.
 
-~~~ 10. todo includes
+~~~ 10. todo-includes
 --- todo.c
 +++ todo.c
 @@ -1,4 +1,6 @@
@@ -207,7 +207,7 @@ The todo list should be printed after every command the user runs. It will show 
 
 Let's add a `todo_print()` function that traverses the linked list to print out the todo list.
 
-~~~ 11. todo_print
+~~~ 11. todo-print
 --- todo.c
 +++ todo.c
 @@ -7,6 +7,19 @@
@@ -231,7 +231,7 @@ Let's add a `todo_print()` function that traverses the linked list to print out 
 |  TodoItem* todo_item = (TodoItem*)malloc(sizeof(TodoItem));
 |  size_t len = strlen(description);
 
-~~~ 12. call todo_print
+~~~ 12. call-todo-print
 --- todo.c
 +++ todo.c
 @@ -37,6 +37,8 @@
@@ -244,7 +244,7 @@ Let's add a `todo_print()` function that traverses the linked list to print out 
 |    fflush(stdout);
 |
 
-~~~ 13. trim trailing newline
+~~~ 13. trim-trailing-newline
 --- todo.c
 +++ todo.c
 @@ -43,6 +43,11 @@
@@ -260,7 +260,7 @@ Let's add a `todo_print()` function that traverses the linked list to print out 
 |        case '+':
 |          todo = todo_add(todo, &input[1]);
 
-~~~ 14. better cli
+~~~ 14. better-cli
 --- todo.c
 +++ todo.c
 @@ -55,6 +55,11 @@
@@ -276,7 +276,7 @@ Let's add a `todo_print()` function that traverses the linked list to print out 
 |    }
 |
 
-~~~ 15. call todo_remove
+~~~ 15. call-todo-remove
 --- todo.c
 +++ todo.c
 @@ -52,6 +52,9 @@
@@ -290,7 +290,7 @@ Let's add a `todo_print()` function that traverses the linked list to print out 
 |          quitting = 1;
 |          break;
 
-~~~ 16. remove xs
+~~~ 16. remove-xs
 --- todo.c
 +++ todo.c
 @@ -31,6 +31,23 @@
@@ -318,7 +318,7 @@ Let's add a `todo_print()` function that traverses the linked list to print out 
 |  char input[1024];
 |  int quitting = 0;
 
-~~~ 17. remove x
+~~~ 17. remove-x
 --- todo.c
 +++ todo.c
 @@ -32,6 +32,10 @@
@@ -333,7 +333,7 @@ Let's add a `todo_print()` function that traverses the linked list to print out 
 |  TodoItem* cur = todo;
 |  while (cur) {
 
-~~~ 18. add snip command
+~~~ 18. add-snip-command
 --- todo.c
 +++ todo.c
 @@ -76,13 +76,16 @@
@@ -355,7 +355,7 @@ Let's add a `todo_print()` function that traverses the linked list to print out 
 |      }
 |    }
 
-~~~ 19. snip xs
+~~~ 19. snip-xs
 --- todo.c
 +++ todo.c
 @@ -52,6 +52,21 @@
@@ -381,7 +381,7 @@ Let's add a `todo_print()` function that traverses the linked list to print out 
 |  char input[1024];
 |  int quitting = 0;
 
-~~~ 20. snip x
+~~~ 20. snip-x
 --- todo.c
 +++ todo.c
 @@ -53,6 +53,10 @@
@@ -396,7 +396,7 @@ Let's add a `todo_print()` function that traverses the linked list to print out 
 |  TodoItem* cur = todo;
 |  while (cur) {
 
-~~~ 21. free final todo list
+~~~ 21. free-final-todo-list
 --- todo.c
 +++ todo.c
 @@ -115,5 +115,14 @@
@@ -415,7 +415,7 @@ Let's add a `todo_print()` function that traverses the linked list to print out 
 |  return 0;
 |}
 
-~~~ 22. free remove x
+~~~ 22. free-remove-x
 --- todo.c
 +++ todo.c
 @@ -33,7 +33,10 @@
@@ -431,7 +431,7 @@ Let's add a `todo_print()` function that traverses the linked list to print out 
 |
 |  int id = 1;
 
-~~~ 23. free remove xs
+~~~ 23. free-remove-xs
 --- todo.c
 +++ todo.c
 @@ -44,7 +44,10 @@
@@ -446,7 +446,7 @@ Let's add a `todo_print()` function that traverses the linked list to print out 
 |      break;
 |    }
 
-~~~ 24. free snip x
+~~~ 24. free-snip-x
 --- todo.c
 +++ todo.c
 @@ -60,6 +60,12 @@
@@ -463,7 +463,7 @@ Let's add a `todo_print()` function that traverses the linked list to print out 
 |  }
 |
 
-~~~ 25. free snip xs
+~~~ 25. free-snip-xs
 --- todo.c
 +++ todo.c
 @@ -73,7 +73,14 @@
