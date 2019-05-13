@@ -16,9 +16,9 @@ So, in this chapter we'll start by building the todo app, *without* any garbage 
 
 ## An interactive command line app
 
-Our todo app will be very minimalist. It'll give the user an interactive prompt, which they can type commands into to add and remove todos. Adding todos will cause memory to be allocated, and removing todos will cause memory to become unused. This will provide a nice interactive way of testing our garbage collector.
+Our todo app will be very minimal. It'll give the user an interactive prompt, which they can type commands into to add and remove todos. Adding todos will cause memory to be allocated, and removing todos will cause that memory to become unused. This will provide a nice interactive way of testing our garbage collector.
 
-Time to start typing! Create a file named `todo.c` and give it a `main()` function.
+Time to start typing! Create a file named `todo.c`, and give it a `main()` function.
 
 ~~~ 1. main
 --- /dev/null
@@ -71,7 +71,7 @@ Next, we'll start reading input from the user in a loop. The first command we'll
 
 We're using `fgets()` to read a line from the standard input, into our `input` buffer. The first character of the user's input tells us which command they want to run. If it's `q`, the loop ends and we quit.
 
-Let's print a `todo> ` prompt to make it clear that we're expecting them to type a command.
+Let's print a `todo>` prompt to make it clear that we're expecting them to type a command.
 
 ~~~ 4. prompt
 --- todo.c
@@ -89,7 +89,7 @@ Let's print a `todo> ` prompt to make it clear that we're expecting them to type
 
 Terminals usually do line-buffered output, meaning they won't actually print anything to the screen until a newline is printed. Our prompt doesn't end in a newline, so we need to flush the standard output to make sure it actually shows up on the screen.
 
-We should also handle end-of-file, as an alternative way of quitting. Users often expect to be able to press <kbd>Ctrl-D</kbd> to quit interactive prompts. It also allows you to use a file as input to the todo app, which could be useful for testing later.
+We should also handle end-of-file, as an alternative way of quitting. Command line users often expect to be able to press <kbd>Ctrl-D</kbd> to quit interactive prompts. It also allows you to use a file as input to the todo app, which could be useful for testing.
 
 ~~~ 5. handle-eof
 --- todo.c
@@ -109,7 +109,7 @@ We should also handle end-of-file, as an alternative way of quitting. Users ofte
 
 ## Adding todos
 
-The `+` command will add an item to the todo list. Whatever comes after the `+` will be the description of the todo item. So you could write `+Take the lettuce out of the drier`.
+The `+` command will add an item to the todo list. Whatever comes after the `+` will be the description of the todo item. For example, you could write `+Walk the dog`.
 
 As I mentioned earlier, we're going to store the todo list as a linked list. Each todo item will contain the todo description (a string), and a pointer to the next todo item in the list. Let's make a `TodoItem` struct for this.
 
@@ -128,7 +128,7 @@ As I mentioned earlier, we're going to store the todo list as a linked list. Eac
 |  char input[1024];
 |  int quitting = 0;
 
-Now our todo list can be stored as a pointer to the first `TodoItem`, or `NULL` if the todo list is empty. Let's add a variable to `main()` to keep track of our todo list, and initialize it to `NULL`.
+Now our todo list can be stored as a pointer to the first `TodoItem`, or `NULL` if the todo list is empty. Let's add a variable to `main()` to hold our todo list, and initialize it to `NULL`.
 
 ~~~ 7. todo-list-head
 --- todo.c
@@ -142,7 +142,7 @@ Now our todo list can be stored as a pointer to the first `TodoItem`, or `NULL` 
 |  while (!quitting) {
 |    printf("todo> ");
 
-Next we'll handle the `+` command.
+Now we're ready to handle the `+` command.
 
 ~~~ 8. call-todo-add
 --- todo.c
@@ -158,7 +158,7 @@ Next we'll handle the `+` command.
 |          quitting = 1;
 |          break;
 
-`todo_add()` will take the existing todo list, add a `TodoItem` to the front of it, and return that todo item as the new head of the list. That's why we both pass `todo` as an argument and then overwrite `todo` with the result.
+`todo_add()` will take the current todo list, add a `TodoItem` to the front of it, and return that todo item as the new head of the list. That's why we both pass `todo` as an argument and then overwrite `todo` with the result.
 
 So, let's implement `todo_add()`. It will have to allocate memory for the `TodoItem` struct, as well as the description string.
 
@@ -184,7 +184,7 @@ So, let's implement `todo_add()`. It will have to allocate memory for the `TodoI
 |  char input[1024];
 |  int quitting = 0;
 
-We'll need to include a couple of headers to use `malloc()`, `strlen()`, and `strcpy()`.
+We'll need to include `<stdlib.h>` for `malloc()`, and `<string.h>` for `strlen()` and `strcpy()`.
 
 ~~~ 10. todo-includes
 --- todo.c
@@ -199,13 +199,13 @@ We'll need to include a couple of headers to use `malloc()`, `strlen()`, and `st
 
 With that, adding items to the todo list should work! Unfortunately we can't see the todo list, so we can't see this in action just yet.
 
-Notice that we used `malloc()` without using `free()`. Technically, our program is leaking memory now. If you have `valgrind`, you can run `valgrind ./todo` to how much memory leaked. Later, after we've implemented the rest of the features for our todo app, we'll add in all the proper `free()`s.
+Notice that we used `malloc()` without using `free()`. Technically, our program is leaking memory now. If you have `valgrind`, you can run `valgrind ./todo` to how much memory leaked. Later, after we've implemented the rest of the features for our todo app, we'll fix these leaks by adding in all the proper `free()`s.
 
 ## Printing the todo list
 
-The todo list should be printed after every command the user runs. It should show an id number beside each todo item, to make it easy to refer to todo items when using the delete command.
+The todo list should be printed after every command the user enters. It should show an id number beside each todo item, to make it easy to refer to todo items when using the delete command.
 
-Let's add a `todo_print()` function that traverses the linked list to print out the todo list.
+Let's add a `todo_print()` function that traverses the linked list and prints out each todo item.
 
 ~~~ 11. todo-print
 --- todo.c
@@ -231,7 +231,7 @@ Let's add a `todo_print()` function that traverses the linked list to print out 
 |  TodoItem* todo_item = (TodoItem*)malloc(sizeof(TodoItem));
 |  size_t len = strlen(description);
 
-Call it inside our main loop:
+We can call `todo_print()` in our main loop, right before printing the prompt.
 
 ~~~ 12. call-todo-print
 --- todo.c
@@ -248,7 +248,7 @@ Call it inside our main loop:
 
 Now you should see your todo items being added when you use the `+` command!
 
-They're being printed with extra newlines though. The newline from the input string is being saved onto the todo item description. Let's trim the newline out so that doesn't happen.
+They're being printed with extra newlines though... I guess the newline from the input string is being saved onto the todo item description. Let's trim the newline out so that doesn't happen.
 
 ~~~ 13. trim-trailing-newline
 --- todo.c
@@ -266,7 +266,7 @@ They're being printed with extra newlines though. The newline from the input str
 |        case '+':
 |          todo = todo_add(todo, &input[1]);
 
-Now that things are starting to come together, let's make the user experience a little better by detecting invalid commands and offering a little bit of help.
+Now that things are starting to come together, let's make the user experience a little better by detecting invalid commands and listing the supported commands.
 
 ~~~ 14. better-cli
 --- todo.c
@@ -286,7 +286,9 @@ Now that things are starting to come together, let's make the user experience a 
 
 ## Removing todos
 
-The command for removing a todo item will be `-`. The id of the todo you want to remove should come right after, e.g. `-3`.
+The command for removing a todo item will be `-`. The id of the todo you want to remove should come right after. For example, `-3` will remove todo item #3.
+
+Similar to `todo_add()`, we'll handle this command in a `todo_remove()` function.
 
 ~~~ 15. call-todo-remove
 --- todo.c
@@ -302,9 +304,9 @@ The command for removing a todo item will be `-`. The id of the todo you want to
 |          quitting = 1;
 |          break;
 
-`atoi()` (ascii to int) parses the number in the input string into an int. This gets passed to `todo_remove()`, which should remove the todo item with that id from the todo list.
+`atoi()` ("ascii to int") parses the number in the input string into an int. This gets passed to `todo_remove()`, which will remove the todo item with that id.
 
-Removing something from a linked list is hard. First we have to traverse the list until we get to the item we want to remove. Then we link the item that comes before it to the item that comes after it.
+Removing something from a linked list is hard. First we have to traverse the list until we get to the item we want to remove. Then we link the item that comes before it to the item that comes after it. Once that's done, the item has effectively been removed from the linked list, because nothing links to it.
 
 ~~~ 16. remove-xs
 --- todo.c
@@ -334,7 +336,9 @@ Removing something from a linked list is hard. First we have to traverse the lis
 |  char input[1024];
 |  int quitting = 0;
 
-This doesn't work for removing the first item of the list. We have to handle that as a special case. All we have to do for this case is making the second item of the list the new head of the list.
+The first `if` statement looks for the item that comes right before the item we want to remove. The second `if` statement makes sure that an item actually exists at the `index`, before looking up its `->next` pointer.
+
+There's one case that this won't work for, though: removing the *first* item of the list. To remove the first item of the list, we have to make the second item of the list the new head of the list by returning it from our function.
 
 ~~~ 17. remove-x
 --- todo.c
@@ -351,9 +355,13 @@ This doesn't work for removing the first item of the list. We have to handle tha
 |  TodoItem* cur = todo;
 |  while (cur) {
 
+Now you can try out adding and removing todos! As you remove todos, think about how much garbage is piling up in memory (that is, `TodoItem` structs that are unreachable because our program doesn't have a pointer to them).
+
 ## The snip command
 
-Let's add one more command: the snip command. This is similar to the remove command, but its symbol is `/` and it removes the given item and *all* of the items that come after it. This command is just a convenient way to create a bunch of garbage for the garbage collector to collect.
+There's one more bonus command we're going to add: the snip command (`/`). It's similar to the remove command, but it removes the given item and *all* of the items that come after it. For example, `/3` will remove todo item #3 and all items that come after it, so that only the first 2 todo items remain.
+
+This can be used to clean up your todo list when you have a bunch of old todos collecting dust. (But really, this will be useful to us later, when we want to create a bunch of garbage for the garbage collector to collect.)
 
 ~~~ 18. add-snip-command
 --- todo.c
@@ -405,7 +413,7 @@ Let's add one more command: the snip command. This is similar to the remove comm
 |  char input[1024];
 |  int quitting = 0;
 
-If we're snipping at the first item, that means we're removing all of the items in the todo list. So in this case, we'll return `NULL` as the new head of the list.
+Once again, we'll have to handle the special case of snipping the first item of the todo list. Snipping the first item means the todo list should become completely empty, so all we have to do is return `NULL` as the new head of the list.
 
 ~~~ 20. snip-x
 --- todo.c
@@ -422,7 +430,7 @@ If we're snipping at the first item, that means we're removing all of the items 
 |  TodoItem* cur = todo;
 |  while (cur) {
 
-Note that because `atoi()` returns `0` for an empty string, you can just type `/` without a number to clear the whole todo list.
+Because `atoi()` returns `0` for an empty string, you can just type `/` without a number to clear the whole todo list.
 
 ## Plugging the memory leaks
 
