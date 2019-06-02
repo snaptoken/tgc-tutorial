@@ -2,21 +2,21 @@
 
 Alright, let's build a garbage collector together! :D
 
-...um, so where do we begin with something like this?
+...um, so where do we start with something like this?
 
-Usually I like to build things in small, satisfying steps---to be able to run the code after making each change, and *see* the change in action.
+I like to build things in small, satisfying steps --- to be able to run the code after making each change, and *see* my change in action.
 
-This gets tricky when building a garbage collector. Garbage collectors are very behind-the-scenes. If they're doing their job well, they don't really have any observable effects to the user.
+This gets tricky when building a garbage collector. Garbage collectors are very behind-the-scenes. If they're doing their job well, they don't have any observable effects to the user.
 
 To gain visibility into our garbage collector, we'll use *print statements* to reveal what it's doing. We'll also build an *operator interface* into it, which prints out the entire state of the garbage collector when you type a secret command.
 
-To test our garbage collector, we'll build a little todo app that stores the todo list as a linked list. Linked lists are an odd choice of data structure for a todo app, but it turns out they are perfect for testing a garbage collector!
+To test our garbage collector, we'll build a tiny todo app that stores the todo list as a linked list. Linked lists are an odd choice of data structure for a todo app, but it turns out they are perfect for testing a garbage collector!
 
 So, in this chapter we'll start by building the todo app, *without* any garbage collection yet. That means we'll have to `free()` our memory manually. Manual memory management is painful, but this pain will give us motivation to start building our garbage collector in the next chapter.
 
 ## An interactive command line app
 
-Our todo app will be very minimal. It'll give the user an interactive prompt, which they can type commands into to add and remove todos. Adding todos will cause memory to be allocated, and removing todos will cause that memory to become unused. This will provide a nice interactive way of testing our garbage collector.
+Our todo app will be very minimal. It'll give the user an interactive prompt, which they can type commands into to add and remove todos. Adding todos will cause memory to be allocated, and removing todos will cause that memory to become unused. This will provide a nice interactive way to test our garbage collector.
 
 Time to start typing! Create a file named `todo.c`, and give it a `main()` function.
 
@@ -44,7 +44,7 @@ Let's add a `Makefile` to compile this program.
 
 Now we can run `make todo` (or just `make`) to compile the todo app, and `make clean` to remove the compiled executable.
 
-Next, we'll start reading input from the user in a loop. The first command we'll implement will be `q`, which will quit the program.
+Next, we'll read commands from the user in a loop. Each command will be one character long. The first one we'll implement is `q`, which quits the program.
 
 ~~~ 3. q-to-quit
 --- todo.c
@@ -87,9 +87,9 @@ Let's print a `todo>` prompt to make it clear that we're expecting them to type 
 |      switch (input[0]) {
 |        case 'q':
 
-Terminals usually do line-buffered output, meaning they won't actually print anything to the screen until a newline is printed. Our prompt doesn't end in a newline, so we need to flush the standard output to make sure it actually shows up on the screen.
+Terminals usually do line-buffered output, meaning they won't actually print anything to the screen until a newline is printed. Our prompt doesn't end in a newline, so we need to flush the standard output buffer to print the prompt immediately.
 
-We should also handle end-of-file, as an alternative way of quitting. Command line users often expect to be able to press <kbd>Ctrl-D</kbd> to quit interactive prompts. It also allows you to use a file as input to the todo app, which could be useful for testing.
+We should also handle end-of-file, as an alternative way of quitting. This lets the user press <kbd>Ctrl-D</kbd> to quit. It also allows you to use a file as input to the todo app, which could be useful for testing.
 
 ~~~ 5. handle-eof
 --- todo.c
@@ -109,7 +109,7 @@ We should also handle end-of-file, as an alternative way of quitting. Command li
 
 ## Adding todos
 
-The `+` command will add an item to the todo list. Whatever comes after the `+` will be the description of the todo item. For example, you could write `+Walk the dog`.
+The `+` command will add an item to the todo list. Whatever comes after the `+` will be the description of the todo item. For example, you might write `+Walk the dog`.
 
 As I mentioned earlier, we're going to store the todo list as a linked list. Each todo item will contain the todo description (a string), and a pointer to the next todo item in the list. Let's make a `TodoItem` struct for this.
 
@@ -128,7 +128,7 @@ As I mentioned earlier, we're going to store the todo list as a linked list. Eac
 |  char input[1024];
 |  int quitting = 0;
 
-Now our todo list can be stored as a pointer to the first `TodoItem`, or `NULL` if the todo list is empty. Let's add a variable to `main()` to hold our todo list, and initialize it to `NULL`.
+Now our todo list can be stored as a pointer to the first `TodoItem` --- or `NULL` if the todo list is empty. Let's add a variable to `main()` to hold our todo list, and initialize it to `NULL`.
 
 ~~~ 7. todo-list-head
 --- todo.c
@@ -197,13 +197,13 @@ We'll need to include `<stdlib.h>` for `malloc()`, and `<string.h>` for `strlen(
 |typedef struct TodoItem {
 |  char* description;
 
-With that, adding items to the todo list should work! Unfortunately we can't see the todo list, so we can't see this in action just yet.
+With that, adding items to the todo list should work! Unfortunately we aren't displaying the todo list, so we can't see this in action yet.
 
-Notice that we used `malloc()` without using `free()`. Technically, our program is leaking memory now. If you have `valgrind`, you can run `valgrind ./todo` to how much memory leaked. Later, after we've implemented the rest of the features for our todo app, we'll fix these leaks by adding in all the proper `free()`s.
+Notice that we used `malloc()` without using `free()`. Technically, our program is leaking memory now. If you have `valgrind`, you can run `valgrind ./todo` to find out how much memory leaked. We'll fix these leaks towards the end of this chapter, by adding in all the proper `free()`s.
 
 ## Printing the todo list
 
-The todo list should be printed after every command the user enters. It should show an id number beside each todo item, to make it easy to refer to todo items when using the delete command.
+We'll print the todo list whenever we print the prompt, so the user always has an up-to-date view of their todos. It'll show an id number beside each todo item, to make it easy to refer to todo items when using the delete command.
 
 Let's add a `todo_print()` function that traverses the linked list and prints out each todo item.
 
@@ -336,9 +336,9 @@ Removing something from a linked list is hard. First we have to traverse the lis
 |  char input[1024];
 |  int quitting = 0;
 
-The first `if` statement looks for the item that comes right before the item we want to remove. The second `if` statement makes sure that an item actually exists at the `index`, before looking up its `->next` pointer.
+The first `if` statement looks for the item that comes right before the item we want to remove. The second `if` statement makes sure that an item exists at the `index`, before looking up its `->next` pointer.
 
-There's one case that this won't work for, though: removing the *first* item of the list. To remove the first item of the list, we have to make the second item of the list the new head of the list by returning it from our function.
+There's one case this won't work for, though: removing the *first* item of the list. To remove the first item of the list, we have to make the second item of the list the new head of the list by returning it from our function.
 
 ~~~ 17. remove-x
 --- todo.c
@@ -355,13 +355,13 @@ There's one case that this won't work for, though: removing the *first* item of 
 |  TodoItem* cur = todo;
 |  while (cur) {
 
-Now you can try out adding and removing todos! As you remove todos, think about how much garbage is piling up in memory (that is, `TodoItem` structs that are unreachable because our program doesn't have a pointer to them).
+Now you can try out adding and removing todos! As you remove todos, think about how much garbage is piling up in memory --- that is, `TodoItem` structs that are unreachable because our program doesn't have a pointer to them anymore.
 
-## The snip command
+## Snipping the todo list
 
-There's one more bonus command we're going to add: the snip command (`/`). It's similar to the remove command, but it removes the given item and *all* of the items that come after it. For example, `/3` will remove todo item #3 and all items that come after it, so that only the first 2 todo items remain.
+There's one more bonus command we're going to add: the snip command (`/`). It's similar to the remove command, but it removes the given item and *all* of the items that come after it. For example, `/3` will remove todo item #3 and all items that come after it, so that only item #1 and item #2 remain.
 
-This can be used to clean up your todo list when you have a bunch of old todos collecting dust. (But really, this will be useful to us later, when we want to create a bunch of garbage for the garbage collector to collect.)
+This might help you clean up your todo list when you have a bunch of old todos collecting dust. Later, it will also be a handy way for us to create a bunch of garbage for the garbage collector to collect.
 
 ~~~ 18. add-snip-command
 --- todo.c
@@ -385,7 +385,7 @@ This can be used to clean up your todo list when you have a bunch of old todos c
 |      }
 |    }
 
-`todo_snip()` will look similar to `todo_remove()`, except it will set the `->next` pointer to `NULL` to cut the list short at the specified id.
+`todo_snip()` will look similar to `todo_remove()`, except it will set the `->next` pointer to `NULL` to cut the list short.
 
 ~~~ 19. snip-xs
 --- todo.c
@@ -430,9 +430,15 @@ Once again, we'll have to handle the special case of snipping the first item of 
 |  TodoItem* cur = todo;
 |  while (cur) {
 
-Because `atoi()` returns `0` for an empty string, you can just type `/` without a number to clear the whole todo list.
+Because `atoi()` returns `0` for an empty string, you can type `/` without a number to clear the entire todo list.
 
 ## Plugging the memory leaks
+
+Our app is now feature-complete, but it is leaking memory all over the place. To fix this, we need to `free()` every block of memory that we allocated through `malloc()`.
+
+If you're following along, make a backup copy of your program now. We'll be reverting all of the following changes at the start of the next chapter. We're only making these changes to experience what it's like to manage memory manually in C, without garbage collection.
+
+First let's `free()` all the todo items that are in the todo list when the program is about to quit.
 
 ~~~ 21. free-final-todo-list
 --- todo.c
@@ -453,6 +459,12 @@ Because `atoi()` returns `0` for an empty string, you can just type `/` without 
 |  return 0;
 |}
 
+The order we do things in is important. We need to access `->next` and `->description` *before* freeing the `TodoItem`. We have to free the description string separately, since it was allocated with a separate `malloc()` call.
+
+If you run `valgrind ./todo`, add some todos, and quit, then there should be no memory leaks. But if you *remove* some todos, and quit, then those todos won't be freed, which is a memory leak. So we'll need to manually free the memory when todos are removed in `todo_remove()` and `todo_snip()`.
+
+Let's start with the case of removing the first item of the list.
+
 ~~~ 22. free-remove-x
 --- todo.c
 +++ todo.c
@@ -469,6 +481,8 @@ Because `atoi()` returns `0` for an empty string, you can just type `/` without 
 |
 |  int id = 1;
 
+Now let's handle the case of removing an item from the middle of the list.
+
 ~~~ 23. free-remove-xs
 --- todo.c
 +++ todo.c
@@ -483,6 +497,10 @@ Because `atoi()` returns `0` for an empty string, you can just type `/` without 
 |      }
 |      break;
 |    }
+
+It sure clutters up the code, doesn't it?
+
+Let's move on to `todo_snip()`. Here we'll have to loop through all the todo items that are being snipped, and free each one.
 
 ~~~ 24. free-snip-x
 --- todo.c
@@ -500,6 +518,8 @@ Because `atoi()` returns `0` for an empty string, you can just type `/` without 
 |    return NULL;
 |  }
 |
+
+That handles the case of snipping the entire todo list. Finally, let's handle snipping the middle of the list.
 
 ~~~ 25. free-snip-xs
 --- todo.c
@@ -520,3 +540,8 @@ Because `atoi()` returns `0` for an empty string, you can just type `/` without 
 |    }
 |    cur = cur->next;
 
+Phew! That was a lot of work, but our program should be safe from memory leaks now. To confirm this, run `valgrind ./todo` and execute each of these code paths before quitting.
+
+Do you see how painful manual memory management can be?
+
+With a garbage collector, we never have to call `free()`. The garbage collector will periodically search for memory that is unreachable and free it automatically. In the [next chapter](oneFellSweep.html), we'll start building one and use it in our todo app!

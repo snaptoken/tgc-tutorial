@@ -500,3 +500,16 @@
 |}
 |
 
+~~~ 230. free-todo
+--- todo.c
++++ todo.c
+@@ -142,6 +142,8 @@
+|      quitting = 1;
+|    }
+|  }
++
++  tgc_free(&gc, todo);
+|}
+|
+|int main(int argc, char **argv) {
+
