@@ -266,7 +266,7 @@ They're being printed with extra newlines though... I guess the newline from the
 |        case '+':
 |          todo = todo_add(todo, &input[1]);
 
-Now that things are starting to come together, let's make the user experience a little better by detecting invalid commands and listing the supported commands.
+Now that things are starting to come together, let's make the user experience better by detecting invalid commands and listing the supported commands.
 
 ~~~ 14. better-cli
 --- todo.c
@@ -338,7 +338,7 @@ Removing something from a linked list is hard. First we have to traverse the lis
 
 The first `if` statement looks for the item that comes right before the item we want to remove. The second `if` statement makes sure that an item exists at the `index`, before looking up its `->next` pointer.
 
-There's one case this won't work for, though: removing the *first* item of the list. To remove the first item of the list, we have to make the second item of the list the new head of the list by returning it from our function.
+There's one case this won't work for, though: removing the *first* item of the list. To remove the first item of the list, we have to make the second item of the list the new head of the list. We can make it the new head by returning it from our function.
 
 ~~~ 17. remove-x
 --- todo.c
@@ -361,7 +361,7 @@ Now you can try out adding and removing todos! As you remove todos, think about 
 
 There's one more bonus command we're going to add: the snip command (`/`). It's similar to the remove command, but it removes the given item and *all* of the items that come after it. For example, `/3` will remove todo item #3 and all items that come after it, so that only item #1 and item #2 remain.
 
-This might help you clean up your todo list when you have a bunch of old todos collecting dust. Later, it will also be a handy way for us to create a bunch of garbage for the garbage collector to collect.
+This might help you clean up your todo list when you have a bunch of old todos collecting dust. For us, it will be a handy way to create a bunch of garbage for the garbage collector to collect.
 
 ~~~ 18. add-snip-command
 --- todo.c
@@ -461,7 +461,7 @@ First let's `free()` all the todo items that are in the todo list when the progr
 
 The order we do things in is important. We need to access `->next` and `->description` *before* freeing the `TodoItem`. We have to free the description string separately, since it was allocated with a separate `malloc()` call.
 
-If you run `valgrind ./todo`, add some todos, and quit, then there should be no memory leaks. But if you *remove* some todos, and quit, then those todos won't be freed, which is a memory leak. So we'll need to manually free the memory when todos are removed in `todo_remove()` and `todo_snip()`.
+If you run `valgrind ./todo`, add some todos, and quit, then there should be no memory leaks reported. But if you *remove* some todos, and quit, then those todos won't be freed, which is a memory leak. So we'll need to manually free the memory when todos are removed in `todo_remove()` and `todo_snip()`.
 
 Let's start with the case of removing the first item of the list.
 

@@ -84,7 +84,7 @@ Ahh, much better.
 
 ## Creating a library
 
-To free all allocated memory, our garbage collector will need to know about every block of memory that was allocated. To keep track of allocations, we'll provide our own allocation function to use in place of `malloc()`.
+To free all allocated memory, our garbage collector will need to *know* about every block of memory that was allocated. To keep track of allocations, we'll provide our own allocation function that wraps `malloc()`.
 
 Our garbage collector will be packaged up in a library named `tgc` (**t**iny **g**arbage **c**ollector), so we'll call our allocation function `tgc_alloc()`.
 
@@ -178,7 +178,9 @@ Include the header file in `tgc.c`, to ensure the function signatures match.
 |  void *ptr = malloc(size);
 |  return ptr;
 
-Before we go on, let's add a *section comment* above our allocator function. This file will eventually grow to 400 lines, so grouping the functions into sections will help keep the diffs in this tutorial shorter.
+TODO: update Makefile
+
+Before we go on, let's add a *section comment* above our allocator function. This file will eventually grow to 400 lines, so grouping the functions into foldable sections will help keep the diffs in this tutorial shorter.
 
 ~~~ 34. section-allocator-functions
 --- tgc.c
@@ -194,6 +196,10 @@ Before we go on, let's add a *section comment* above our allocator function. Thi
 
 ## Pointer table
 
+We need a place to store the pointers returned by `malloc()`. We're going to create a data structure called the *pointer table* to store them in. The pointer table will be a dynamic array for now, and in a later chapter we will convert it to a hash table for much better performance.
+
+For each pointer we store, we will also want to store some metadata about that pointer (like whether the garbage collector has marked it or not). We will store this data in a `tgc_ptr_t` struct, and so the pointer table will be an array of these structs.
+
 ~~~ 35. struct-tgc-ptr-t
 --- tgc.h
 +++ tgc.h
@@ -208,6 +214,10 @@ Before we go on, let's add a *section comment* above our allocator function. Thi
 |void *tgc_alloc(size_t size);
 |
 |#endif
+
+For now all we need is the pointer itself.
+
+We'll store the dynamic array of `tgc_ptr_t`s directly in a struct called `tgc_t`. This struct will eventually contain all the global state needed by our garbage collector, hence the very general name `tgc_t`.
 
 ~~~ 36. struct-tgc-t
 --- tgc.h
@@ -225,6 +235,12 @@ Before we go on, let's add a *section comment* above our allocator function. Thi
 |
 |#endif
 
+`nitems` is the number of slots in the array that are in use, and `nslots` is the total number of slots available in the array. A slot whose `ptr` is `NULL` will be considered an unused slot.
+
+`size_t` is an unsigned integer type that is used for array indexes and lengths.
+
+It will be up to the user of the `tgc` library to decide where in memory to store this global state. In our todo app, let's store it in a global variable.
+
 ~~~ 37. static-gc
 --- todo.c
 +++ todo.c
@@ -237,6 +253,8 @@ Before we go on, let's add a *section comment* above our allocator function. Thi
 |typedef struct TodoItem {
 |  char* description;
 |  struct TodoItem* next;
+
+You will then need to get `tgc` to initialize the global state by calling `tgc_start()`.
 
 ~~~ 38. call-tgc-start
 --- todo.c
@@ -251,6 +269,8 @@ Before we go on, let's add a *section comment* above our allocator function. Thi
 |    todo_print(todo);
 |
 
+Let's declare `tgc_start()` in `tgc.h`.
+
 ~~~ 39. define-tgc-start
 --- tgc.h
 +++ tgc.h
@@ -263,6 +283,8 @@ Before we go on, let's add a *section comment* above our allocator function. Thi
 |void *tgc_alloc(size_t size);
 |
 |#endif
+
+Finally, define `tgc_start()` to initialize the dynamic array to be an empty array.
 
 ~~~ 40. really-define-tgc-start
 --- tgc.c
@@ -281,6 +303,8 @@ Before we go on, let's add a *section comment* above our allocator function. Thi
 |/*** allocator functions ***/
 |
 |void *tgc_alloc(size_t size) {
+
+To store a new pointer into the pointer table, `tgc_alloc()` is going to need access to the global state. In fact, every public function in `tgc` is going to take the global state as its first argument from now on.
 
 ~~~ 41. tgc-alloc-takes-global-state-h
 --- tgc.h
@@ -307,6 +331,8 @@ Before we go on, let's add a *section comment* above our allocator function. Thi
 |  return ptr;
 |}
 
+Now we'll call a helper function `tgc_add()`, which will add the new pointer to the pointer table.
+
 ~~~ 43. call-tgc-add
 --- tgc.c
 +++ tgc.c
@@ -317,6 +343,8 @@ Before we go on, let's add a *section comment* above our allocator function. Thi
 +  tgc_add(gc, ptr);
 |  return ptr;
 |}
+
+`tgc_add()` will call two more functions. `tgc_resize()` will ensure the dynamic array has at least one free slot, by growing the array if needed. `tgc_add_ptr()` will then add the pointer to the array, *assuming* that it will be able to find a free slot.
 
 ~~~ 44. define-tgc-add
 --- tgc.c
@@ -334,6 +362,12 @@ Before we go on, let's add a *section comment* above our allocator function. Thi
 |void *tgc_alloc(tgc_t *gc, size_t size) {
 |  void *ptr = malloc(size);
 |  tgc_add(gc, ptr);
+
+We increment `nitems` first, to tell `tgc_resize()` how many slots are needed in the table.
+
+It may seem odd to have both `tgc_add()` and `tgc_add_ptr()` right now, but the reason for this split will become clear as we add more features. Think of `tgc_add_ptr()` as purely an "insert" operation on our pointer table data structure, and `tgc_add()` as a higher-level operation that takes care of anything else we need to do when adding a pointer (like triggering a garbage collection cycle!).
+
+Let's go ahead and start writing `tgc_resize()`.
 
 ~~~ 45. define-tgc-resize
 --- tgc.c
@@ -353,6 +387,14 @@ Before we go on, let's add a *section comment* above our allocator function. Thi
 |/*** gc control ***/
 |
 |void tgc_start(tgc_t *gc) {
+
+First we check if the array is already big enough. If so, we don't need to resize it and we can return immediately.
+
+If we do need to resize it, we use the common strategy of doubling the current size. This might allocate a lot more space than we need, but it also means we won't have to do another resize operation for quite a while. Resizes are expensive because they involve allocating a whole new array and reinserting each item into the new array.
+
+`calloc()` is important here, because it clears the allocated memory to all `0`s. This sets the `ptr` field of each `tgc_ptr_t` to `NULL`, which is how we know that slot is unused.
+
+The next step is copy the old array's items into the new table.
 
 ~~~ 46. memcpy-pointer-table
 --- tgc.c
@@ -374,6 +416,10 @@ Before we go on, let's add a *section comment* above our allocator function. Thi
 |
 |/*** gc control ***/
 
+If this were a hash table, we would have to loop through the old table and reinsert each item into the new table with `tgc_add_ptr()`. For now, it works to copy the entire array at once with `memcpy()`.
+
+`memcpy()` comes from `<string.h>`, so let's include it.
+
 ~~~ 47. include-string-h
 --- tgc.h
 +++ tgc.h
@@ -385,6 +431,8 @@ Before we go on, let's add a *section comment* above our allocator function. Thi
 |
 |typedef struct {
 |  void *ptr;
+
+The final step is to `free()` the old pointer table.
 
 ~~~ 48. free-old-pointer-table
 --- tgc.c
@@ -398,6 +446,8 @@ Before we go on, let's add a *section comment* above our allocator function. Thi
 |}
 |
 |/*** gc control ***/
+
+Now that we've ensured we have at least one free slot in the table, we can implement `tgc_add_ptr()` to find a free slot and store the new pointer there.
 
 ~~~ 49. define-tgc-add-ptr
 --- tgc.c
@@ -425,6 +475,10 @@ Before we go on, let's add a *section comment* above our allocator function. Thi
 |
 |static void tgc_resize(tgc_t *gc) {
 
+Remember, a free slot is defined as one that has a `ptr` containing `NULL`. We do a linear search and store the new pointer in the first free slot we find.
+
+TODO: what is this step?
+
 ~~~ 50. xxx-prevent-readding-a-pointer
 --- tgc.c
 +++ tgc.c
@@ -436,6 +490,8 @@ Before we go on, let's add a *section comment* above our allocator function. Thi
 |  }
 |}
 |
+
+`tgc_alloc()` should be successfully storing our pointers in the pointer table. Let's update `todo.c` to call `tgc_alloc()` properly, and then see if it still works!
 
 ~~~ 51. pass-gc-to-tgc-alloc
 --- todo.c
@@ -455,7 +511,11 @@ Before we go on, let's add a *section comment* above our allocator function. Thi
 |
 |  return todo_item;
 
+Our todo app still works! But how do we know our pointer table is working?
+
 ## Operator interface
+
+To see that our pointer table is working, we'll add an "operator interface" that gives us a view into the internal data structures of our garbage collector. We'll add a secret `p` (print) command to our todo app, which will call a `tgc_debug()` function provided by our library.
 
 ~~~ 52. call-tgc-debug
 --- todo.c
@@ -471,6 +531,8 @@ Before we go on, let's add a *section comment* above our allocator function. Thi
 |          quitting = 1;
 |          break;
 
+Let's declare `tgc_debug()` in `tgc.h`.
+
 ~~~ 53. declare-tgc-debug
 --- tgc.h
 +++ tgc.h
@@ -481,6 +543,8 @@ Before we go on, let's add a *section comment* above our allocator function. Thi
 +void tgc_debug(tgc_t *gc);
 +
 |#endif
+
+`tgc_debug()` will print out each field in the `tgc_t` struct, and each `tgc_ptr_t` struct in the pointer table.
 
 ~~~ 54. define-tgc-debug
 --- tgc.c
@@ -506,6 +570,10 @@ Before we go on, let's add a *section comment* above our allocator function. Thi
 +  }
 +}
 
+The `%p` format specifier prints out a pointer as hexademical (starting with `0x`), or `(nil)` if it's a `NULL` pointer (this may be different on your machine). `%zu` is the format specifier for `size_t`.
+
+To use `printf()`, we need to include `<stdio.h>`.
+
 ~~~ 55. include-stdio-h
 --- tgc.h
 +++ tgc.h
@@ -518,7 +586,13 @@ Before we go on, let's add a *section comment* above our allocator function. Thi
 |#include <string.h>
 |
 
+Now if you add some todo items, and run the `p` command, you should see that it's storing your `malloc()`'d pointers in the pointer table!
+
 ## Logging
+
+Logging is another strategy we'll use to reveal what our garbage collector is doing behind the scenes. Whenever our garbage collector does something interesting, we'll have it print out a `[DEBUG]` message on the console.
+
+Let's add one to `tgc_alloc()`.
 
 ~~~ 56. log-tgc-alloc
 --- tgc.c
@@ -531,6 +605,8 @@ Before we go on, let's add a *section comment* above our allocator function. Thi
 |  tgc_add(gc, ptr);
 |  return ptr;
 |}
+
+And another one for when the pointer table is resized.
 
 ~~~ 57. log-tgc-resize
 --- tgc.c
@@ -545,6 +621,16 @@ Before we go on, let's add a *section comment* above our allocator function. Thi
 |}
 |
 |/*** gc control ***/
+
+## Pretty printing
+
+TODO: move to operator interface section?
+
+When we print out the pointer table, all we see are the memory addresses. That's not very satisfying. Wouldn't it be nice to see the `TodoItem`popular/?count=75&after=t3_c6vv6e structs and `description` strings that each pointer points to?
+
+To accomplish this, we'll allow a user-defined `pretty_print()` function to be passed to `tgc_debug()`. It will take the `tgc_ptr_t` to be printed and will have to figure out what kind of object the pointer is pointing to and how to print it in a nice way.
+
+So, let's add a `pretty_print` argument to `tgc_debug()` and rewrite `tgc_debug_ptr()` to call this function.
 
 ~~~ 58. call-pretty-print
 --- tgc.c
@@ -576,6 +662,10 @@ Before we go on, let's add a *section comment* above our allocator function. Thi
 |  }
 |}
 
+Function pointer types look really weird in C. `pretty_print` is the name of the argument, and its type is "pointer to a function that takes a `tgc_ptr_t*` and doesn't return anything". I guess the idea is to make the function type look the same as a function declaration.
+
+Anyways, next let's update the header file to match.
+
 ~~~ 59. tgc-h-pretty-print
 --- tgc.h
 +++ tgc.h
@@ -587,6 +677,10 @@ Before we go on, let's add a *section comment* above our allocator function. Thi
 +void tgc_debug(tgc_t *gc, void (*pretty_print)(tgc_ptr_t*));
 |
 |#endif
+
+TODO: use `0x70D0` magic number in `TodoList` struct instead (or maybe a single `0xff` byte is safer)
+
+Now we're ready to use it in `todo.c`. Our todo app allocates two types of objects: `TodoItem` structs, and strings (for the `description`s). So our `pretty_print()` function will have to figure out which one the pointer points to, and then print out the object accordingly.
 
 ~~~ 60. define-pretty-print
 --- todo.c
@@ -626,6 +720,10 @@ Before we go on, let's add a *section comment* above our allocator function. Thi
 |        case 'q':
 |          quitting = 1;
 
+Now we can see which objects are which in the pointer table when we run the `p` command!
+
+TODO: move log-tgc-start to logging section
+
 ~~~ 61. log-tgc-start
 --- tgc.c
 +++ tgc.c
@@ -638,6 +736,14 @@ Before we go on, let's add a *section comment* above our allocator function. Thi
 |}
 |
 |/*** allocator functions ***/
+
+## Error handling
+
+Now that we've confirmed that things are working as they should be, let's go back and add in some error handling.
+
+It doesn't happen often, but `malloc()` and `calloc()` can fail if you run out of memory. In this case they return `NULL`. An easy way to trigger this is to pass an extremely large number to `malloc()`.
+
+For our library to be taken seriously, we should handle this error case. If `malloc()` returns `NULL`, then `tgc_alloc()` should return `NULL` and shouldn't try to store `NULL` in the pointer table.
 
 ~~~ 62. handle-malloc-error
 --- tgc.c
@@ -655,6 +761,8 @@ Before we go on, let's add a *section comment* above our allocator function. Thi
 |  return ptr;
 |}
 |
+
+We also call `calloc()` in `tgc_resize()`. If this fails, then `tgc_resize()` is unable to do its job of growing the table. To report this failure back to its caller, it will now return `1` on success and `0` on failure.
 
 ~~~ 63. handle-calloc-error
 --- tgc.c
@@ -692,6 +800,8 @@ Before we go on, let's add a *section comment* above our allocator function. Thi
 |
 |/*** gc control ***/
 
+Now `tgc_add()` has to handle the possible failure of `tgc_resize()`. If the resize failed, that means the table is still full and we can't add another pointer to the table. So `tgc_add()` can't do its job, and should return `NULL` to indicate failure.
+
 ~~~ 64. handle-tgc-resize-error
 --- tgc.c
 +++ tgc.c
@@ -717,6 +827,8 @@ Before we go on, let's add a *section comment* above our allocator function. Thi
 |
 |void *tgc_alloc(tgc_t *gc, size_t size) {
 
+Finally, if `tgc_add()` failed, then `tgc_alloc()` should fail by returning `NULL`. Since `tgc_add()` returns the added pointer, we can just return the same thing it returned.
+
 ~~~ 65. handle-tgc-add-error
 --- tgc.c
 +++ tgc.c
@@ -730,6 +842,12 @@ Before we go on, let's add a *section comment* above our allocator function. Thi
 |  return ptr;
 |}
 
+## Sweep
+
+Now that we're keeping track of every memory allocation in the pointer table, all that is left to do is `free()` them at the end of the program. We will do this when the user program calls `tgc_stop()`, signalling that they are done with the garbage collector and all of the memory allocated through it.
+
+Let's call `tgc_stop()` right before our todo app quits.
+
 ~~~ 66. call-tgc-stop
 --- todo.c
 +++ todo.c
@@ -742,6 +860,8 @@ Before we go on, let's add a *section comment* above our allocator function. Thi
 |  return 0;
 |}
 
+Declare it in `tgc.h` right next to `tgc_start()`.
+
 ~~~ 67. declare-tgc-stop
 --- tgc.h
 +++ tgc.h
@@ -753,6 +873,8 @@ Before we go on, let's add a *section comment* above our allocator function. Thi
 |
 |void *tgc_alloc(tgc_t *gc, size_t size);
 |
+
+What it will do is run `tgc_sweep()` to sweep up all the garbage (assuming every allocation is garbage at this point), and clean up the `tgc_t` struct by `free()`ing the pointer table.
 
 ~~~ 68. define-tgc-stop
 --- tgc.c
@@ -772,6 +894,8 @@ Before we go on, let's add a *section comment* above our allocator function. Thi
 |/*** allocator functions ***/
 |
 |static void *tgc_add(tgc_t *gc, void *ptr) {
+
+`tgc_sweep()` will loop through the pointer table, calling `free()` on every pointer it finds.
 
 ~~~ 69. tgc-sweep
 --- tgc.c
@@ -799,6 +923,16 @@ Before we go on, let's add a *section comment* above our allocator function. Thi
 |/*** gc control ***/
 |
 |void tgc_start(tgc_t *gc) {
+
+After calling `free()`, we need to remove the pointer from the pointer table. (This will become important when we're collecting garbage in the middle of a program's execution rather than just at the end.)
+
+To remove an item from the table, we `memset()` its struct to contain all `0`s. This has the effect of setting `ptr` to `NULL`, and setting any other fields we add to `0` as well. We also need to manually update the total number of slots in use, by decrementing `nitems`.
+
+With that, our todo app should no longer be leaking any memory, despite not calling `free()`! As always, you can verify this with `valgrind ./todo`.
+
+We've satisfied the one hard requirement of a garbage collector, which is that it frees all allocated memory *at some point*. All we have to do now is satisfy the more fuzzy requirement of freeing memory *soon after it becomes unused*, rather than waiting until the end of the program's life. This is where things get interesting!
+
+TODO: what is this step
 
 ~~~ 70. xxx-return-early-if-nothing-to-sweep
 --- tgc.c
