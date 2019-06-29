@@ -1,5 +1,15 @@
 # One fell sweep
 
+In the last chapter, we created a todo app that manually manages its memory. This required a lot of careful thought and tricky code. In this chapter, our goal is to create a minimal garbage collector that `free()`s memory for us, so that we don't have to.
+
+Our only requirement for now is that when our program *ends*, no memory has leaked. The simplest way to accomplish this is to keep track of each block of memory allocated, and `free()` it all at once at the very end of our program, in "one fell sweep".
+
+In practice, a garbage collector that only collects garbage at the very end of the program's life is useless --- the operating system will reclaim all your program's memory at that point anyways. But starting out this way will lay a lot of groundwork towards making a proper garbage collector in the following chapters.
+
+## No more `free()`
+
+Let's undo all the changes we made in the last section of the last chapter. This will bring the memory leaks back, but by the end of this chapter they'll be taken care of by our garbage collector.
+
 ~~~ 26. revert-free
 --- todo.c
 +++ todo.c
@@ -70,6 +80,16 @@
 |  return 0;
 |}
 
+Ahh, much better.
+
+## Creating a library
+
+To free all allocated memory, our garbage collector will need to know about every block of memory that was allocated. To keep track of allocations, we'll provide our own allocation function to use in place of `malloc()`.
+
+Our garbage collector will be packaged up in a library named `tgc` (**t**iny **g**arbage **c**ollector), so we'll call our allocation function `tgc_alloc()`.
+
+Let's replace both calls to `malloc()` with calls to this new allocator function.
+
 ~~~ 27. call-tgc-alloc
 --- todo.c
 +++ todo.c
@@ -88,6 +108,8 @@
 |
 |  return todo_item;
 
+As mentioned, our library will be named `tgc`, so we'll include a new header file named `tgc.h` to get `tgc_alloc()`.
+
 ~~~ 28. include-tgc-h
 --- todo.c
 +++ todo.c
@@ -100,11 +122,15 @@
 |typedef struct TodoItem {
 |  char* description;
 
+Let's create the `tgc.h` file now. This will contain the public API of our library.
+
 ~~~ 29. declare-tgc-alloc
 --- /dev/null
 +++ tgc.h
 @@ -0,0 +1,1 @@
 +void *tgc_alloc(size_t size);
+
+Include `<stdlib.h>` to get the `size_t` type:
 
 ~~~ 30. include-stdlib
 --- tgc.h
@@ -113,6 +139,8 @@
 +#include <stdlib.h>
 +
 |void *tgc_alloc(size_t size);
+
+Add an [include guard](https://en.wikipedia.org/wiki/Include_guard) so users of our library can `#include` it more than once in their project without causing errors.
 
 ~~~ 31. include-guard
 --- tgc.h
@@ -127,6 +155,8 @@
 +
 +#endif
 
+Now we're ready to write the `tgc_alloc()` function. Put it in a new file called `tgc.c`. For now all it'll do is call `malloc()`.
+
 ~~~ 32. define-tgc-alloc
 --- /dev/null
 +++ tgc.c
@@ -135,6 +165,8 @@
 +  void *ptr = malloc(size);
 +  return ptr;
 +}
+
+Include the header file in `tgc.c`, to ensure the function signatures match.
 
 ~~~ 33. include-tgc-h
 --- tgc.c
@@ -145,6 +177,8 @@
 |void *tgc_alloc(size_t size) {
 |  void *ptr = malloc(size);
 |  return ptr;
+
+Before we go on, let's add a *section comment* above our allocator function. This file will eventually grow to 400 lines, so grouping the functions into sections will help keep the diffs in this tutorial shorter.
 
 ~~~ 34. section-allocator-functions
 --- tgc.c
@@ -157,6 +191,8 @@
 |void *tgc_alloc(size_t size) {
 |  void *ptr = malloc(size);
 |  return ptr;
+
+## Pointer table
 
 ~~~ 35. struct-tgc-ptr-t
 --- tgc.h
@@ -419,6 +455,8 @@
 |
 |  return todo_item;
 
+## Operator interface
+
 ~~~ 52. call-tgc-debug
 --- todo.c
 +++ todo.c
@@ -479,6 +517,8 @@
 |#include <stdlib.h>
 |#include <string.h>
 |
+
+## Logging
 
 ~~~ 56. log-tgc-alloc
 --- tgc.c
@@ -772,4 +812,3 @@
 |  for (i = 0; i < gc->nslots; i++) {
 |    if (gc->items[i].ptr == NULL) { continue; }
 |    printf("[DEBUG] freeing %p\n", gc->items[i].ptr);
-
