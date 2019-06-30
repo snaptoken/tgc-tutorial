@@ -1,5 +1,13 @@
 # Mark and sweep
 
+In the last two chapters, we created a sweep phase that assumes *all* memory is garbage, and then we created a mark phase that identifies which memory allocations are garbage. In this chapter, we'll get these two phases to work together!
+
+We want the sweep phase to only `free()` memory that has been identified as garbage by the mark phase. When we run the mark phase followed by the sweep phase, we call that a *garbage collection cycle*. We'll have to figure out a way of running garbage collection cycles at regular intervals throughout the lifetime of the user's program, to prevent garbage from piling up and using too much memory.
+
+## Only sweep unmarked pointers
+
+Our sweep phase is already looping through the pointer table, to `free()` each object. Let's add a check that skips over pointers have their `mark` flag set.
+
 ~~~ 101. sweep-unmarked
 --- tgc.c
 +++ tgc.c
@@ -11,6 +19,10 @@
 |    printf("[DEBUG] freeing %p\n", gc->items[i].ptr);
 |    free(gc->items[i].ptr);
 |    memset(&gc->items[i], 0, sizeof(tgc_ptr_t));
+
+Now the sweep phase only `free()`s pointers that are garbage. Perfect!
+
+At the end of the sweep phase, we will want to reset all `mark` flags back to `0`, to get ready for the next mark phase.
 
 ~~~ 102. reset-marks
 --- tgc.c
@@ -27,6 +39,16 @@
 |
 |/*** gc control ***/
 
+Now we'll be able to safely run multiple garbage collection cycles (`tgc_mark()` followed by `tgc_sweep()`) during the program's execution.
+
+Notice that `tgc_stop()` still works as expected. It's calling `tgc_sweep()` without calling `tgc_mark()` first, so it's running a sweep phase that assumes *everything* is garbage, because nothing is marked!
+
+## Run a garbage collection cycle with `tgc_run()`
+
+A garbage collection cycle consists of running the mark phase and then immediately running the sweep phase. Let's package that up into a function called `tgc_run()`. It'll be a public function so that library users have a way of explicitly running the garbage collector whenever they want.
+
+First, declare `tgc_run()` in `tgc.h`.
+
 ~~~ 103. declare-tgc-run
 --- tgc.h
 +++ tgc.h
@@ -38,6 +60,8 @@
 |
 |void *tgc_alloc(tgc_t *gc, size_t size);
 |
+
+All it has to do is call `tgc_mark()` and `tgc_sweep()`, in that order!
 
 ~~~ 104. define-tgc-run
 --- tgc.c
@@ -55,6 +79,18 @@
 |
 |static void *tgc_add(tgc_t *gc, void *ptr, size_t size) {
 
+## Automatic garbage collection
+
+Most garbage collectors don't require you to explicitly call a function like `tgc_run()` to start a garbage collection cycle. Instead, they decide when a good time to run a collection cycle is, and run it automatically for you.
+
+It's natural to imagine the garbage collector running at regular intervals of time (like every few seconds), interrupting your program's execution to run its collection cycle and then resuming your program. This might sound really hard to implement in C, but there's one key change we can make to this model to make it way simpler: instead of measuring time in *seconds*, measure time in *number of memory allocations* (number of calls to `tgc_alloc()`).
+
+Not only is this simpler to implement, but it makes a lot more sense to only run the garbage collector after a bunch of new memory has been allocated. When a program is allocating a lot of new memory, it's often a sign that it's done with some old memory that is now garbage. Think about running through a level in a sidescrolling video game: enemies are disappearing off the left side of the screen, as new ones appear on the right side. Garbage objects are continually being replaced by new objects.
+
+This also solves the problem of the garbage collector having to interrupt your program. If the garbage collector only runs after a certain number of allocations, it makes sense to run it *during* the user's call to `tgc_alloc()`. This is the only way that the user's program regularly transfers control to `tgc`, so it's also kind of our only option. Memory allocation is a *somewhat* expensive operation, so it's a *probably okay* time to do a garbage collection cycle (which is admittedly way more expensive).
+
+So. For now, let's add a call to `tgc_run()` in `tgc_add()`, so that a garbage collection cycle runs on every single allocation.
+
 ~~~ 105. collect-on-alloc
 --- tgc.c
 +++ tgc.c
@@ -66,6 +102,8 @@
 |    return ptr;
 |  } else {
 |    gc->nitems--;
+
+Remove the debug code we added to test the mark phase.
 
 ~~~ 106. cleanup-mark-debug
 --- tgc.c
@@ -87,6 +125,16 @@
 -  exit(1);
 |}
 
+Now give it a try! When you remove a todo item, you should see it getting garbage-collected on the very next allocation!
+
+## Collecting garbage less often
+
+We talked about only running a garbage collection cycle after a certain number of allocations. So what should that number be? In `tgc`, a garbage collection cycle runs when the number of allocations has grown by 50% since the last garbage collection cycle. So if there were 1000 objects left alive at the end of the last sweep phase, then the next automatic garbage collection cycle will happen 500 allocations after that.
+
+We'll keep track of this number in a new field called `mitems` (maybe it stands for "max items"). When `nitems` becomes larger than `mitems`, that is when we'll do a garbage collection cycle, and then calculate a new `mitems` value for the next one.
+
+Let's add the `mitems` field to the `tgc_t` struct.
+
 ~~~ 107. add-mitems
 --- tgc.h
 +++ tgc.h
@@ -100,6 +148,8 @@
 |
 |void tgc_start(tgc_t *gc, void *stk);
 
+Initialize it to `0`.
+
 ~~~ 108. init-mitems
 --- tgc.c
 +++ tgc.c
@@ -111,6 +161,8 @@
 |  gc->items = NULL;
 |  gc->minptr = UINTPTR_MAX;
 |  gc->maxptr = 0;
+
+Print it out in `tgc_debug()`.
 
 ~~~ 109. debug-mitems
 --- tgc.c
@@ -124,6 +176,8 @@
 |    printf("items[%zu] = {\n", i);
 |    tgc_debug_ptr(&gc->items[i], pretty_print);
 
+At the end of the sweep phase, set `mitems` to `nitems + 50% of nitems` at the end of the sweep phase.
+
 ~~~ 110. set-mitems
 --- tgc.c
 +++ tgc.c
@@ -136,6 +190,10 @@
 |}
 |
 |/*** gc control ***/
+
+I'm not sure of the intent behind the `+ 1`, but it certainly won't hurt anything.
+
+Now in `tgc_add()`, we'll only call `tgc_run()` if `nitems` has surpassed `mitems`.
 
 ~~~ 111. use-mitems
 --- tgc.c
@@ -152,6 +210,12 @@
 |  } else {
 |    gc->nitems--;
 
+Now you should see garbage being collected less often as you add and remove todos.
+
+That 50% factor is a bit of an arbitrary choice. `tgc` calls it the "sweep factor", and stores it in the `tgc_t` struct to make it more configurable.
+
+Let's add a `sweepfactor` field to `tgc_t`.
+
 ~~~ 112. add-sweepfactor
 --- tgc.h
 +++ tgc.h
@@ -163,6 +227,8 @@
 |  size_t nitems, nslots, mitems;
 |} tgc_t;
 |
+
+Initialize it to 50% in `tgc_start()`.
 
 ~~~ 113. set-sweepfactor
 --- tgc.c
@@ -176,6 +242,8 @@
 |  printf("[DEBUG] tgc start\n");
 |}
 
+Add it to `tgc_debug()`.
+
 ~~~ 114. debug-sweepfactor
 --- tgc.c
 +++ tgc.c
@@ -187,6 +255,8 @@
 |  printf("nitems = %zu\n", gc->nitems);
 |  printf("nslots = %zu\n", gc->nslots);
 |  printf("mitems = %zu\n", gc->mitems);
+
+Finally, replace the magic number `0.5` with our `sweepfactor` field in `tgc_sweep()`.
 
 ~~~ 115. use-sweepfactor
 --- tgc.c
@@ -201,6 +271,12 @@
 |
 |/*** gc control ***/
 
+## Pausing the garbage collector
+
+Our garbage collector offers two ways to run garbage collection cycles: manually by calling `tgc_run()`, and automatically when you call `tgc_alloc()`. Some programs may want complete control over when garbage collection happens, or may want to disable automatic garbage collection temporarily to make sure it doesn't interrupt a critical task. We can offer this by allowing them to *pause* and *resume* automatic garbage collection.
+
+Let's add a boolean `paused` field to `tgc_t` to keep track of whether automatic garbage collection has been paused.
+
 ~~~ 116. add-paused
 --- tgc.h
 +++ tgc.h
@@ -212,6 +288,8 @@
 |  uintptr_t minptr, maxptr;
 |  tgc_ptr_t *items;
 |  double sweepfactor;
+
+Initialize it to `0` (not paused).
 
 ~~~ 117. init-paused
 --- tgc.c
@@ -225,6 +303,8 @@
 |  gc->nslots = 0;
 |  gc->mitems = 0;
 
+Add it to `tgc_debug()`.
+
 ~~~ 118. debug-paused
 --- tgc.c
 +++ tgc.c
@@ -236,6 +316,8 @@
 |  printf("minptr = %p\n", gc->minptr);
 |  printf("maxptr = %p\n", gc->maxptr);
 |  printf("sweepfactor = %lf\n", gc->sweepfactor);
+
+Declare `tgc_pause()` and `tgc_resume()` in `tgc.h`.
 
 ~~~ 119. declare-pause-resume
 --- tgc.h
@@ -249,6 +331,8 @@
 |void tgc_run(tgc_t *gc);
 |
 |void *tgc_alloc(tgc_t *gc, size_t size);
+
+Define them to simply set `paused` to true or false.
 
 ~~~ 120. define-pause-resume
 --- tgc.c
@@ -269,6 +353,8 @@
 |  tgc_mark(gc);
 |  tgc_sweep(gc);
 
+Finally, ensure `paused` is false before running automatic garbage collection in `tgc_add()`.
+
 ~~~ 121. use-paused
 --- tgc.c
 +++ tgc.c
@@ -282,3 +368,6 @@
 |    }
 |    return ptr;
 
+With that, we've implemented all the core functionality that a basic garbage collector is expected to have. It periodically identifies and collects garbage throughout the life of your program, ensuring that your program is only using as much memory as it needs.
+
+It still has one big problem though: it's extremely slow. This isn't noticeable in simple programs like our todo app. But in the [next chapter](hashTable.html), we'll stress test our garbage collector to see just how painfully slow it is, and make it way faster by gradually converting our pointer table from a *dynamic array* to a *hash table*.
