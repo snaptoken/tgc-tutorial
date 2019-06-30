@@ -1,5 +1,15 @@
 # Mark
 
+So far, our garbage collector is able to keep track of all the memory allocated through `tgc_alloc()`. But it isn't able to identify which blocks of memory are garbage until the very end of the program, when *all* memory becomes garbage.
+
+In this chapter we'll implement the *mark phase* of a *mark and sweep garbage collector*. During the mark phase, we identify all memory that is *reachable*, and mark it. After that, any memory that is left unmarked must be garbage and can be collected immediately.
+
+For memory to be *reachable*, there must either be a reference to it in the C stack, or a reference to it from another *reachable* block of memory that was allocated through `tgc_alloc()`. Users of `tgc` have to keep this in mind, and be careful not to store references to memory in places that `tgc` isn't aware of.
+
+## Add the `mark` flag
+
+To keep track of which blocks of memory are *marked* in the mark phase, we'll add a boolean `mark` field to `tgc_ptr_t`.
+
 ~~~ 71. add-mark
 --- tgc.h
 +++ tgc.h
@@ -11,6 +21,8 @@
 |} tgc_ptr_t;
 |
 |typedef struct {
+
+We'll initialize it to `0` (not marked).
 
 ~~~ 72. set-mark
 --- tgc.c
@@ -24,6 +36,8 @@
 |  for (i = 0; i < gc->nslots; i++) {
 |    if (gc->items[i].ptr == NULL) {
 
+Print it out in `tgc_debug_ptr()`.
+
 ~~~ 73. debug-mark
 --- tgc.c
 +++ tgc.c
@@ -36,6 +50,8 @@
 |}
 |
 |void tgc_debug(tgc_t *gc, void (*pretty_print)(tgc_ptr_t*)) {
+
+In the mark phase, we are going to be looking at raw memory and assuming that anything and everything could be a pointer. Each possible pointer will be passed to `tgc_mark_ptr()` which will look for the pointer in the pointer table, and mark it.
 
 ~~~ 74. tgc-mark-ptr
 --- tgc.c
@@ -60,6 +76,18 @@
 |  size_t i;
 |
 
+## Mark the stack
+
+In a C program, all local variables and function arguments live in a contiguous block of memory called the *stack*. When a function returns, its local variables and arguments are popped from the stack. The stack only contains variables that belong to an *active* function call.
+
+So we can use the stack to pretty reliably tell what memory is currently *reachable* by your program.
+
+C doesn't have any user-friendly APIs for examining the stack. But since the stack is just a block of memory belonging to your program, all you need is a pointer to it and you can freely access it. A simple way to get a pointer to the stack is to take the address of a local variable, since local variables are allocated on the stack.
+
+So to mark the stack, we can start with a local variable at the top of the stack, and work our way down... but how do we know how far to go? We're going to ask the user's help with this. When they call `tgc_start()`, we're going to expect them to pass the address of a local variable, and we'll store this pointer as the *stack bottom*. Then when we're marking the stack, we will work our way down from the top until we hit the *bottom*.
+
+Let's add a `bottom` field to the global state.
+
 ~~~ 75. add-bottom
 --- tgc.h
 +++ tgc.h
@@ -71,6 +99,8 @@
 |  tgc_ptr_t *items;
 |  size_t nitems, nslots;
 |} tgc_t;
+
+Add the stack pointer argument to `tgc_start()`.
 
 ~~~ 76. tgc-start-stk
 --- tgc.h
@@ -85,6 +115,8 @@
 |
 |void *tgc_alloc(tgc_t *gc, size_t size);
 
+Set `bottom` to this stack pointer.
+
 ~~~ 77. set-bottom
 --- tgc.c
 +++ tgc.c
@@ -98,6 +130,8 @@
 |  gc->nitems = 0;
 |  gc->nslots = 0;
 |  gc->items = NULL;
+
+In our todo app, we'll pass the address of the `argc` argument as our stack pointer.
 
 ~~~ 78. pass-stack
 --- todo.c
@@ -118,6 +152,8 @@
 |  while (!quitting) {
 |    todo_print(todo);
 
+Add `bottom` to `tgc_debug()`'s output, to see that it's being set.
+
 ~~~ 79. debug-bottom
 --- tgc.c
 +++ tgc.c
@@ -129,6 +165,8 @@
 |  printf("nitems = %zu\n", gc->nitems);
 |  printf("nslots = %zu\n", gc->nslots);
 |  for (size_t i = 0; i < gc->nslots; i++) {
+
+Now we're ready to mark the stack. The top of the stack will be the address of a local variable, and we'll loop through the stack until we hit the `bottom`, calling `tgc_mark_ptr()` for each value.
 
 ~~~ 80. tgc-mark-stack
 --- tgc.c
@@ -149,6 +187,14 @@
 |static void tgc_sweep(tgc_t *gc) {
 |  size_t i;
 |
+
+The cast to `(char*)` is needed because pointer arithmetic is invalid on a void pointer. `p` is a pointer to a value on the stack, and the `*((void**)p)` expression is saying that we're interpreting the value on the stack as a void pointer. What a language.
+
+Of course, not every value on the stack is a pointer. But we just don't know what the types of things are on the stack, so we have to assume that any value could be a pointer, and try to mark it. Towards the end of this chapter, we'll add an optimization that quickly discards most of these false positives.
+
+This code assumes that all pointers are *aligned* to always start at a memory address that is a multiple of `8` (or whatever the `sizeof(void*)` is). That is why we're able to increment `p` by `sizeof(void*)`, instead of incrementing it by `1`, which would be much slower.
+
+This code also assumes that the stack grows *downward*, i.e. `top` is less than `bot`. This is the most common direction for stacks to grow, but on some architectures it may grow the other direction. We can check for this and handle both cases, by comparing `bot` and `top`.
 
 ~~~ 81. handle-both-stack-directions
 --- tgc.c
@@ -173,6 +219,8 @@
 |}
 |
 
+Let's call `tgc_mark_stack()` from a new function `tgc_mark()`, which will perform the whole *mark phase* of our garbage collector.
+
 ~~~ 82. tgc-mark
 --- tgc.c
 +++ tgc.c
@@ -191,6 +239,8 @@
 |static void tgc_sweep(tgc_t *gc) {
 |  size_t i;
 |
+
+Let's test this out on our todo app! We'll have it run the mark phase when we run the `p` command.
 
 ~~~ 83. test-tgc-mark
 --- tgc.c
@@ -211,6 +261,12 @@
 +
 +  exit(1);
 |}
+
+We expect the `TodoItem` at the head of the todo list to be marked, since it is referenced by the `todo` local variable on the stack.
+
+This may or may not work as expected, because it turns out we can't predict whether the `&argc` pointer will come before or after the `&todo` pointer on the stack. So `todo` might live outside our stack bottom.
+
+This must be why the `tgc` docs state that any pointers to memory allocated by `tgc_alloc()` must exist at least one stack level deeper than the call to `tgc_start()`. So we're going to want to move most of our `main()` code into a new function, and call `tgc_start()` and `tgc_stop()` from `main()`.
 
 ~~~ 84. todo-cli
 --- todo.c
@@ -244,6 +300,10 @@
 |  tgc_stop(&gc);
 |
 
+Now you should for sure see the head `TodoItem` being marked when you run the `p` command.
+
+TODO: what do do with this step??
+
 ~~~ 85. xxx-tgc-mark-return-early
 --- tgc.c
 +++ tgc.c
@@ -256,6 +316,12 @@
 |  printf("[DEBUG] marking stack\n");
 |
 |  tgc_mark_stack(gc);
+
+TODO: makes more sense to do this after marking registers? also makes the registers section a little bigger
+
+One tricky thing we have to watch out for is that C sometimes optimizes whole functions away when compiling our code. Instead of calling `tgc_mark_stack()`, it might inline its code to run directly inside `tgc_mark()`. If this happened, our `jmpbuf` will be in the same stack frame as the `stk` local variable we are using to get the stack top, and so the `jmpbuf` might end up outside of the slice of stack we are looking at.
+
+One way to prevent this is to call the `tgc_mark_stack()` function through a `volatile` function pointer. `volatile` tells C that the value at the given address may change at any time. For example, a hardware clock might be continually writing the current time to a specific address in memory. In our case, this will prevent C from inlining the function because it thinks that the function we are calling could change at runtime. So it must do a proper function call and create a new stack frame for it, which is what we want.
 
 ~~~ 86. mark-stack-volatile
 --- tgc.c
@@ -278,6 +344,12 @@
 |
 |static void tgc_sweep(tgc_t *gc) {
 
+## Mark the heap
+
+Right now, only the head `TodoItem` of our todo list is getting marked. But the entire todo list is reachable *through* the head `TodoItem`. To mark reachable objects in the heap, we will recursively mark any pointers we find within the block of memory of any pointer we have just marked.
+
+In order to scan through a pointer's entire block of memory, we'll need to know the size of the block of memory. This is already being passed to `tgc_alloc()` when we allocate the memory, so let's store it in the `tgc_ptr_t` struct at that time.
+
 ~~~ 87. add-size
 --- tgc.h
 +++ tgc.h
@@ -289,6 +361,8 @@
 |} tgc_ptr_t;
 |
 |typedef struct {
+
+We'll set it in `tgc_add_ptr()`.
 
 ~~~ 88. tgc-add-ptr-size
 --- tgc.c
@@ -309,6 +383,8 @@
 |  for (i = 0; i < gc->nslots; i++) {
 |    if (gc->items[i].ptr == NULL) {
 
+`tgc_add()` will pass the `size` along to `tgc_add_ptr()`.
+
 ~~~ 89. tgc-add-size
 --- tgc.c
 +++ tgc.c
@@ -327,6 +403,8 @@
 |  } else {
 |    gc->nitems--;
 
+Finally, pass the `size` given to `tgc_alloc()` into `tgc_add()`.
+
 ~~~ 90. tgc-alloc-pass-size
 --- tgc.c
 +++ tgc.c
@@ -340,6 +418,8 @@
 |  return ptr;
 |}
 
+Add the `size` field to `tgc_debug_ptr()` to confirm that it's working.
+
 ~~~ 91. debug-size
 --- tgc.c
 +++ tgc.c
@@ -351,6 +431,8 @@
 |}
 |
 |void tgc_debug(tgc_t *gc, void (*pretty_print)(tgc_ptr_t*)) {
+
+Now we can recursively mark objects in the heap. After marking an object, we'll loop through its block of memory and recursively mark every possible pointer we come across.
 
 ~~~ 92. mark-heap
 --- tgc.c
@@ -373,6 +455,10 @@
 |    }
 |  }
 
+Once again, we're assuming that *anything* could be a pointer, and that all pointers are aligned in memory. The `(void**)` cast is treating the memory block as an array of void pointers that we're iterating through.
+
+This code has a bad bug. If an object contains a reference to itself, or two objects contain references to each other, then `tgc_mark_ptr()` will infinitely recurse. To prevent this, we'll check to see if the pointer has already been marked, and return early if so.
+
 ~~~ 93. mark-heap-avoid-infinite-recursion
 --- tgc.c
 +++ tgc.c
@@ -384,6 +470,20 @@
 |      gc->items[i].mark = 1;
 |      printf("[DEBUG] marked %p\n", ptr);
 |      for (k = 0; k < gc->items[i].size/sizeof(void*); k++) {
+
+Now all the `TodoItem`s and strings that are part of your todo list should be marked when you run the `p` command!
+
+## Mark the registers
+
+TODO: move to before marking the heap?
+
+There's another bit of C trickery we may have to account for. C sometimes stores local variables or arguments in *registers*, skipping the stack entirely if it can get away with it. Normally this optimization is completely transparent to C programmers, but in our case we have to worry about whether references to memory are hiding in the registers.
+
+C doesn't let you access registers directly, unless you embed assembly code. But the standard library does have a function called `setjmp()`, which happens to have a side effect of dumping all the current register values into a C struct called `jmp_buf`.
+
+`setjmp()` is meant to set a "restore point" in the stack, that you can jump back to by calling `longjmp()` from further down the stack. In other words, `longjmp()` is like throwing an exception and `setjmp()` catches it, by restoring all the registers (including the stack pointer and instruction pointer) with the values from the original call to `setjmp()`.
+
+We will call `setjmp()` to store the registers into the stack of the current function. Once they're in the stack, `tgc_mark_stack()` will mark them like any other value in the stack.
 
 ~~~ 94. mark-registers
 --- tgc.c
@@ -406,6 +506,8 @@
 |}
 |
 
+Include `<setjmp.h>` to get `setjmp()` and `jmp_buf`.
+
 ~~~ 95. include-setjmp
 --- tgc.h
 +++ tgc.h
@@ -417,6 +519,14 @@
 |#include <stdio.h>
 |#include <stdlib.h>
 |#include <string.h>
+
+## Min/max optimization
+
+You may have noticed that marking the stack and the heap can be quite expensive operations. We are calling `tgc_mark_ptr()` for every possible pointer in the stack and in each block of memory we're recursively marking. `tgc_mark_ptr()` does a linear search of the pointer table every time it is called. This is a lot of unnecessary work, as most "pointers" we are attempting to mark are either not in the pointer table, or aren't pointers at all!
+
+One optimization we can make to quickly detect these false positives, is to keep track of the range of valid pointers in our pointer table. If we know the smallest pointer that has been allocated, and the largest pointer, then we can do a quick test to see if the pointer we're marking falls in that range. If not, it must not be in the pointer table and we can return immediately from `tgc_mark_ptr()`.
+
+To keep track of this range, let's add two fields called `minptr` and `maxptr` to our global state.
 
 ~~~ 96. add-minptr-maxptr
 --- tgc.h
@@ -438,6 +548,8 @@
 |  size_t nitems, nslots;
 |} tgc_t;
 
+We'll initialize them to the extreme opposite values, so that the first pointer that is added is guaranteed to become the new minimum and maximum.
+
 ~~~ 97. init-minptr-maxptr
 --- tgc.c
 +++ tgc.c
@@ -451,6 +563,8 @@
 |  printf("[DEBUG] tgc start\n");
 |}
 
+As usual, add the new fields to `tgc_debug()`.
+
 ~~~ 98. debug-minptr-maxptr
 --- tgc.c
 +++ tgc.c
@@ -463,6 +577,8 @@
 |  printf("nitems = %zu\n", gc->nitems);
 |  printf("nslots = %zu\n", gc->nslots);
 |  for (size_t i = 0; i < gc->nslots; i++) {
+
+Whenever a pointer is added, we'll update `minptr` and `maxptr`.
 
 ~~~ 99. set-minptr-maxptr
 --- tgc.c
@@ -479,6 +595,8 @@
 |  if (tgc_resize(gc)) {
 |    tgc_add_ptr(gc, ptr, size);
 
+Finally, in `tgc_mark_ptr()` we'll check if the given pointer is outside the valid range of pointers, and return immediately if so.
+
 ~~~ 100. use-minptr-maxptr
 --- tgc.c
 +++ tgc.c
@@ -493,3 +611,4 @@
 |    if (ptr == gc->items[i].ptr) {
 |      if (gc->items[i].mark) { return; }
 
+The mark phase of our mark & sweep garbage collector is now complete! In the [next chapter](markAndSweep.html), we will update the sweep phase to only sweep unmarked pointers, and get the garbage collection cycle to run multiple times throughout the life of our program.

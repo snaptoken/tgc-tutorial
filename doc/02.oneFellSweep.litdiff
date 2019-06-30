@@ -932,6 +932,8 @@ With that, our todo app should no longer be leaking any memory, despite not call
 
 We've satisfied the one hard requirement of a garbage collector, which is that it frees all allocated memory *at some point*. All we have to do now is satisfy the more fuzzy requirement of freeing memory *soon after it becomes unused*, rather than waiting until the end of the program's life. This is where things get interesting!
 
+In the [next chapter](mark.html), we'll implement a *mark phase* which will allow us to identify garbage and collect it during the normal execution of our program.
+
 TODO: what is this step
 
 ~~~ 70. xxx-return-early-if-nothing-to-sweep
