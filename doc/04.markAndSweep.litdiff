@@ -191,7 +191,7 @@ At the end of the sweep phase, set `mitems` to `nitems + 50% of nitems` at the e
 |
 |/*** gc control ***/
 
-I'm not sure of the intent behind the `+ 1`, but it certainly won't hurt anything.
+I'm not sure of the intent behind the `+ 1`, but it certainly doesn't hurt anything.
 
 Now in `tgc_add()`, we'll only call `tgc_run()` if `nitems` has surpassed `mitems`.
 
