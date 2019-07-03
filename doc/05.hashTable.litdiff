@@ -1,14 +1,36 @@
 # Hash table
 
-Our garbage collector works, but if we started using it in a real-world application that allocates a lot of memory, we would find that it's quite slow. This is due to our choice of data structure for our pointer table. We went with a dynamic array for simplicity, and every time `tgc_mark_ptr()` is called it has to do a linear search through the entire array.
+Our garbage collector works,
+but if we started using it in a real-world application
+that allocates a lot of memory,
+we would find that it's quite slow.
+This is due to our choice of data structure for our pointer table.
+We went with a dynamic array for simplicity,
+so `tgc_mark_ptr()` has to do a linear search
+through the entire array
+every time it's called.
 
-A much better data structure for our purposes is a *hash table*. Searching a hash table is an O(1) operation (on average), meaning it's fast no matter how large the table is. Linear search, on the other hand, is O(n) meaning it gets slower as the table gets bigger.
+A much better data structure for our purposes is a *hash table*.
+Searching a hash table is an *O(1)* operation (on average),
+meaning it's fast no matter how large the table gets.
+Linear search is *O(n)*,
+meaning it keeps getting slower as the table gets bigger.
 
-In this chapter we'll gradually convert our dynamic array into a hash table --- specifically a variant called "Robin Hood hashing". As we do so, we'll be running a stress test on our garbage collector to see how much the hash table speeds it up.
+In this chapter we'll gradually convert our dynamic array into a hash table,
+using a variation called *Robin Hood hashing*.
+As we make these improvements,
+we'll run a stress test on our garbage collector
+to see how much our changes speed it up.
 
 ## Stress test
 
-Create a new file called `stress_test.c`. The stress test will continuously allocate memory, storing references to the memory in an array called `data`. After a while, the array will fill up and we'll start back from the beginning, overwriting the reference that was there previously, When a reference is overwritten, it will become garbage to be collected.
+Let's create a new file for our stress test,
+called `stress_test.c`.
+The stress test will continuously allocate new blocks of memory,
+storing references to the memory in an array called `data`.
+After a while, the array will fill up and we'll start back from the beginning,
+overwriting the references that are already there.
+Each reference that's overwritten then becomes garbage to be collected.
 
 ~~~ 122. stress-test
 --- /dev/null
@@ -39,23 +61,61 @@ Create a new file called `stress_test.c`. The stress test will continuously allo
 +  return 0;
 +}
 
-`MAX_LIVE_ALLOCATIONS` is the size we want the pointer table to grow to before we start creating garbage by overwriting references in the `data` array. `TOTAL_ALLOCATIONS` is the number of times `tgc_alloc()` will be called.
+`MAX_LIVE_ALLOCATIONS` is the size of the `data` array,
+and `TOTAL_ALLOCATIONS` is the number of times to call `tgc_alloc()`
+in the loop.
+When `data` becomes full,
+every iteration of the loop will overwrite an existing reference,
+turning the referenced block of memory into garbage.
 
 TODO: Makefile rule for this? and for the `time` command?
 
-Run the stress test by running `make stress_test` and then `time ./stress_test >/dev/null`. The `>/dev/null` ignores all the debug output of `tgc`, which would otherwise slow down the program even more. `time` will measure the amount of time it takes for the stress test to finish.
+Run the stress test by running `make stress_test`
+and then `time ./stress_test >/dev/null`.
+The `>/dev/null` ignores all the debug output of `tgc`,
+which would otherwise slow down the program a lot more.
+`time` measures the number of seconds it takes
+for the stress test to finish.
 
-On my machine it takes X seconds to finish. If it takes much longer or shorter on your machine, you can try tweaking the two constants to get it closer to a reasonable amount of time to test with.
+On my machine it takes X seconds to finish.
+If it takes much longer or shorter on your machine,
+you can try tweaking the two constants
+to get it closer to a reasonable amount of time
+to test with.
 
 ## Speeding up linear search
 
-Right now we always search through the pointer table starting from the *beginning* of the array. What if we could roughly guess *where* in the array a given pointer was stored, and start our linear search from there instead? We would find the pointer much faster in most cases.
+Currently, `tgc_mark_ptr()` always searches through the pointer table
+starting from the *beginning* of the array.
+What if we could roughly guess *where* in the array
+a given item was stored,
+and start our search from there instead?
+We would find the item much quicker
+in most cases.
 
-So how can we guess where a given pointer was inserted in the array? If the insert operation follows a rule to decide where in the array to insert a given pointer, then the search operation can follow that same rule to know where to start looking for that pointer.
+So how can we guess where a given item was inserted in the array?
+The insert operation needs to follow a predictable rule
+when deciding what index to insert the item at.
+Then, the search operation can follow that same rule
+to know what index to start looking for the item at.
 
-We need a function that takes a pointer and returns an *ideal index* in which to store that pointer. Then both the insert operation and the search operation can call this function to know where to insert or look for that pointer in the array. This function is called a *hash function*.
+We need a function that takes an item
+and returns an *ideal index*
+in which to store that item.
+Then the insert and search operations can both call this function
+to know where to insert or look for that item in the array.
+This function is called a *hash function*.
 
-If the *ideal index* is already occupied in the array, we'll search for the next available empty slot and insert the pointer there. Two or more pointers with the same ideal index is called a *collision* and means the search operation will have to work a little harder to find the pointer it's looking for, since it can't be in its ideal position. A good hash function minimizes collisions by ensuring that the ideal indexes it returns tend to spread out uniformly over the array.
+If an item's ideal index is already occupied in the array,
+we'll search for the next available empty slot that comes after it
+and insert the item there.
+Two or more items with the same ideal index is called a *collision*
+and means the search operation might have to search a little farther
+to find the item it's looking for,
+since only one of the items can be in its ideal position.
+A good hash function minimizes collisions
+by ensuring that the ideal indexes it returns
+tend to spread out uniformly over the array.
 
 That said, here is `tgc`'s hash function:
 
@@ -74,11 +134,22 @@ That said, here is `tgc`'s hash function:
 |  tgc_ptr_t item;
 |  size_t i;
 
-I guess pointers returned by `malloc()` are already random enough that the pointers can almost act as their own hash! The `>> 3` removes the lowest 3 bits of the pointer, because the memory addresses that things start on are usually multiples of 8, which means the lowest 3 bits are always `0`.
+I guess pointers returned by `malloc()` are already random enough
+that the pointers can almost act as their own hash!
+The `>> 3` removes the lowest 3 bits of the pointer,
+because those bits are probably always going to be `0`
+(which is because allocated blocks of memory
+are usually aligned to start on a multiple of 8).
 
-The hash function doesn't return an array index directly. Instead, it returns a very large number and we're expected to map that number to a valid array index using the *modulo* operator with the size of our array. In other words: `ideal_index = tgc_hash(ptr) % gc->nslots`.
+The hash function doesn't return an array index directly.
+Instead, it returns a very large number
+and we're expected to map that number to a valid array index
+using the *modulo* operator with the size of our array.
+In other words: `ideal_index = tgc_hash(ptr) % gc->nslots`.
 
-Now that have our hash function and a whole lot of theory, let's update `tgc_add_ptr()` to use it.
+Now that we've got our hash function,
+let's update `tgc_add_ptr()` to use it
+to decide where to insert items into the pointer table.
 
 ~~~ 124. add-ptr-use-hash
 --- tgc.c
@@ -105,9 +176,14 @@ Now that have our hash function and a whole lot of theory, let's update `tgc_add
 |}
 |
 
-We changed the `for` loop into a `while` loop to make it easier for `i` to wrap around to the beginning of the array once it reaches the end. The only other change is that it *starts* its search at the ideal index for that pointer.
+We changed the `for` loop into a `while` loop
+to make it easier for `i` to wrap around to the beginning of the array
+once it reaches the end.
+The only other change is that
+it *starts* its search for an empty slot
+at the ideal index for the item it's inserting.
 
-Now let's do the same thing for the search operation in `tgc_mark_ptr()`.
+Now let's make the same change to the search operation in `tgc_mark_ptr()`.
 
 ~~~ 125. mark-ptr-use-hash
 --- tgc.c
@@ -141,9 +217,23 @@ Now let's do the same thing for the search operation in `tgc_mark_ptr()`.
 |}
 |
 
-Once again, we converted the `for` loop into a `while` loop that starts its search at the ideal index. We needed a new variable `j` to keep track of how many slots we've searched, so we know when to stop.
+Once again,
+we converted the `for` loop into a `while` loop
+that starts its search at the ideal index.
+We needed a new variable `j`
+to keep track of how many slots we've searched,
+so we know when to stop.
 
-Because the ideal indexes depend on the total size of the pointer table (`nslots`), it's not good enough anymore to just copy the array when the pointer table is resized. Instead, we'll have to reinsert each pointer into the new pointer table, so that they end up near their new ideal indexes.
+There's one other place that needs updating now.
+Because the ideal indexes depend on the total size
+of the pointer table (`nslots`),
+it's not good enough anymore
+to copy the whole array when the pointer table is resized.
+Everything will suddenly have a different ideal index
+and be in the wrong place in the array.
+
+Instead, we'll need to re-insert each pointer into the new pointer table,
+so that they end up near their new ideal indexes.
 
 ~~~ 126. resize-readd-ptrs
 --- tgc.c
